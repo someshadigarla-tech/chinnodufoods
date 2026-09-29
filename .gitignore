@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Local OTP dispatch records & temporary files
+.otp_dispatch.json
+.env
+*.log
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Binaries & archives (to prevent upload limits)
+cloudflared.exe
+*.zip
+

@@ -1,0 +1,39 @@
+{
+  "otpSessions": {},
+  "sessions": {},
+  "adminSessions": {
+    "323f4870fb6a0e2b035c893111d9b922699f4020ecb16430a58f66a4c6ba3ed0": {
+      "username": "9676698427",
+      "createdAt": 1790576192358,
+      "expiresAt": 1790662592358
+    },
+    "5a2449b2de96fd7da8b310d2bd37dbbfc5e3d69ed107552f389a097b13f1f0cd": {
+      "username": "someshadigarla@gmail.com",
+      "createdAt": 1790655712289,
+      "expiresAt": 1790742112289
+    },
+    "09be649aa936406f2e557d4b91ae004c56410bfdd699fcf33e834ba02f4092ec": {
+      "username": "someshadigarla@gmail.com",
+      "createdAt": 1790655810818,
+      "expiresAt": 1790742210818
+    },
+    "452f337adb2dd6b95d60438339615186fab145f5bf4c79ba3c0530256a665b52": {
+      "username": "9676698427",
+      "createdAt": 1790656044362,
+      "expiresAt": 1790742444362
+    }
+  },
+  "lockouts": {},
+  "rateLimits": {
+    "someshadigarla@gmail.com": [
+      1790655712286,
+      1790655810816
+    ],
+    "9676698427": [
+      1790656044358
+    ],
+    "someshadigarla@gmai.com": [
+      1790403631543
+    ]
+  }
+}

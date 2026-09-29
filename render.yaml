@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: chinnodu-foods
+    runtime: node
+    plan: free
+    region: singapore # Closest to India for lowest latency
+    buildCommand: "npm install"
+    startCommand: node server.js
+    domains:
+      - chinnodufoods.com
+      - www.chinnodufoods.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_EMAIL
+        value: someshadigarla@gmail.com
+      - key: ADMIN_PHONE
+        value: "9676698427"
+      - key: ADMIN_PASSWORD
+        sync: false # Set securely in Render dashboard
+      - key: FAST2SMS_API_KEY
+        sync: false # Optional: Set to send real SMS
+      - key: MONGODB_URI
+        sync: false # Optional: Set MongoDB Atlas connection string for zero data loss

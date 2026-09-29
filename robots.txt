@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /api/admin/
+Disallow: /api/orders
+Disallow: /api/accounts
+
+Sitemap: https://chinnodufoods.com/sitemap.xml

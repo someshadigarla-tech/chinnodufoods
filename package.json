@@ -1,0 +1,23 @@
+{
+  "name": "chinnodu-foods-website",
+  "version": "1.0.0",
+  "description": "Chinnodu Foods - Authentic Homemade Pickles & Sweets Online Store",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chinnodu-foods",
+    "andhra-pickles",
+    "traditional-sweets"
+  ],
+  "author": "Chinnodu Foods",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^7.6.0"
+  }
+}

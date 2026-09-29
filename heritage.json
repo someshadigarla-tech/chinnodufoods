@@ -1,0 +1,54 @@
+{
+  "sectionTag": "Explore Traditional Ruchulu",
+  "sectionTitle": "Our Heritage Specialities",
+  "sectionDesc": "Select a category below to browse our freshly prepared homemade delicacies",
+  "categories": [
+    {
+      "id": "sweets",
+      "name": "Traditional Sweets",
+      "telugu": "సాంప్రదాయ మిఠాయిలు (10)",
+      "tag": "Pure Ghee",
+      "tagClass": "sweet-tag",
+      "image": "assets/images/bellam-sunnunda.jpg",
+      "info": "Bellam Sunnunda, Ragi Laddu, Nuvvulu Laddu, Ghee Arisalu, Kajjikayalu",
+      "buttonText": "View Sweets →"
+    },
+    {
+      "id": "savouries",
+      "name": "Crispy Savouries",
+      "telugu": "కరకరలాడే పిండివంటలు (9)",
+      "tag": "Crispy",
+      "tagClass": "snack-tag",
+      "image": "assets/images/savouries.jpg",
+      "info": "Chegodilu, Janthikalu, Beetroot Janthikalu, Saggubiyyam Chekkalu, Boondhi",
+      "buttonText": "View Savouries →"
+    },
+    {
+      "id": "pickles",
+      "name": "Homemade Pickles",
+      "telugu": "సంప్రదాయ నిల్వ పచ్చళ్ళు (2)",
+      "tag": "Homemade",
+      "tagClass": "veg-tag",
+      "image": "assets/images/avakaya-pickle.jpg",
+      "info": "Special Gongura Pickle & Country Farm Tomata Nilva Pachadi",
+      "buttonText": "View Pickles →"
+    },
+    {
+      "id": "tandra",
+      "name": "Authentic Tandra",
+      "telugu": "సాంప్రదాయ తాండ్ర (3)",
+      "tag": "Sun-Dried",
+      "tagClass": "pure-tag",
+      "image": "assets/images/mango-thandra-bellam.jpg",
+      "info": "Mango Thandra Bellam, Mango Thandra Sugar & Rare Tati Thandra",
+      "buttonText": "View Tandra →"
+    }
+  ],
+  "storyTag": "",
+  "storyTitle": "From Our Village Kitchen to Your Dining Table",
+  "storyImage": "assets/images/hero-banner.jpg",
+  "storyBadgeYears": "",
+  "storyBadgeText": "Years of Village Culinary Tradition",
+  "storyPara1": "In our hometown, pickle-making and sweet preparation wasn't just cooking—it was a cherished community festival. Every summer, hand-picked raw sour mangoes were cut under shade, sun-dried Guntur chillies were ground on traditional granite stone mortars, and aromatic cold wood-pressed groundnut oil was poured generously into ceramic jaadis.",
+  "storyPara2": "At Chinnodu Foods, we founded this initiative with one pure vision: to bring that authentic, chemical-free, mother's village taste to every city home, ensuring our heritage recipes continue to nourish upcoming generations."
+}

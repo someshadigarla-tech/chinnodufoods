@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chinnodu Foods | Authentic Homemade Pickles &amp; Sweets</title>
+  <meta name="description" content="Experience authentic village-style cooking with Chinnodu Foods. 100% homemade Andhra pickles (Veg & Non-Veg), traditional sweets, crispy savouries, podis and pure cow ghee. Delivered across India and worldwide.">
+  <meta name="keywords" content="Chinnodu Foods, Andhra Pickles, Avakaya, Chicken Pickle, Gongura Pickle, Bandar Laddu, Pootharekulu, Chekodilu, Kandi Podi, Palle Ruchulu, Home Foods">
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="Chinnodu Foods - Authentic Homemade Pickles &amp; Sweets">
+  <meta property="og:description" content="Pure ingredients, wood-pressed oils, zero preservatives. Taste the real village heritage flavors delivered to your doorstep.">
+  <meta property="og:image" content="https://chinnodufoods.com/assets/images/brand-logo.jpg">
+  <meta property="og:url" content="https://chinnodufoods.com/">
+  <meta property="og:type" content="website">
+
+  <!-- Canonical Tag -->
+  <link rel="canonical" href="https://chinnodufoods.com/">
+
+  <!-- Schema.org JSON-LD Structured Data for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FoodEstablishment",
+    "name": "Chinnodu Foods",
+    "image": "https://chinnodufoods.com/assets/images/brand-logo.jpg",
+    "url": "https://chinnodufoods.com",
+    "telephone": "+919676698427",
+    "priceRange": "₹₹",
+    "servesCuisine": "Traditional Andhra Cuisine",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "IN"
+    }
+  }
+  </script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="assets/images/brand-logo.jpg">
+
+  <!-- Google Fonts: Playfair Display (Royal Headers) & Outfit (Modern UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Announcement Bar (Maharaja + Dhanalakshmi combined) -->
+  <div class="announcement-bar" id="announcement-bar">
+    <div class="ticker-track">
+      <div class="ticker-content">
+        <span>🚚 <strong>FREE DELIVERY</strong> on orders above ₹999</span>
+        <span>✦ 100% Wood-Pressed Pure Oils</span>
+        <span>✦ Stone-Ground Masalas & Secret Homemade Recipes</span>
+        <span>✦ Zero Artificial Preservatives & Colors</span>
+        <span>📦 Pan-India & Express USA/Global Shipping</span>
+        <span>🌶️ Fresh Batches Prepared Daily</span>
+      </div>
+      <div class="ticker-content" aria-hidden="true">
+        <span>🚚 <strong>FREE DELIVERY</strong> on orders above ₹999</span>
+        <span>✦ 100% Wood-Pressed Pure Oils</span>
+        <span>✦ Stone-Ground Masalas & Secret Homemade Recipes</span>
+        <span>✦ Zero Artificial Preservatives & Colors</span>
+        <span>📦 Pan-India & Express USA/Global Shipping</span>
+        <span>🌶️ Fresh Batches Prepared Daily</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Sticky Header -->
+  <header class="site-header" id="site-header">
+    <div class="container header-container">
+      
+      <!-- Brand Logo -->
+      <a href="#home" class="brand-logo" id="brand-logo-link">
+        <div class="logo-emblem">
+          <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+        </div>
+        <div class="brand-text">
+          <span class="brand-main">Chinnodu Foods</span>
+          <span class="brand-tagline">chinnodufoods.com • Home of Traditional Items</span>
+        </div>
+      </a>
+
+      <!-- Center Search Bar (Replaces old desktop nav links) -->
+      <div class="header-nav-search-area" id="header-nav-search-area">
+        <div class="search-box-wrapper" id="header-search-wrapper">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="header-search-input" placeholder="Search Avakaya, Chicken Pickle, Sweets, Snacks..." autocomplete="off">
+          <button class="clear-search-btn" id="clear-search-btn" aria-label="Clear Search">&times;</button>
+          
+          <!-- Search Dropdown Results -->
+          <div class="search-results-dropdown" id="search-results-dropdown"></div>
+        </div>
+      </div>
+
+      <!-- Header Action Controls: Track Order & Cart -->
+      <div class="header-actions">
+        <!-- Live Courier Track Order Pill -->
+        <a href="javascript:void(0)" class="nav-item nav-track-pill" onclick="openTrackOrderModal()" title="Check live order dispatch & courier tracking">📍 Track Order</a>
+
+        <!-- Cart Drawer Toggle Button -->
+        <button class="cart-trigger-btn" id="header-cart-btn" aria-label="View Shopping Cart">
+          <div class="cart-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            <span class="cart-count-badge" id="cart-count-badge">0</span>
+          </div>
+          <div class="cart-meta-wrap">
+            <span class="cart-label">My Cart</span>
+            <span class="cart-total-preview" id="cart-total-preview">₹0</span>
+          </div>
+        </button>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle Mobile Navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Drawer Menu -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay"></div>
+  <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile Navigation">
+    <div class="drawer-header">
+      <div class="logo-emblem">
+        <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+      </div>
+      <div>
+        <h3 class="drawer-brand-title">Chinnodu Foods</h3>
+        <p class="drawer-brand-sub">chinnodufoods.com • Pure Goodness</p>
+      </div>
+      <button class="drawer-close-btn" id="drawer-close-btn" aria-label="Close Menu">&times;</button>
+    </div>
+    
+    <div class="drawer-links">
+      <a href="#home" class="drawer-link active" onclick="closeMobileDrawer()">🏠 Home</a>
+      <a href="#categories-section" class="drawer-link" onclick="closeMobileDrawer()">📂 Categories</a>
+      <a href="#menu-catalog" class="drawer-link" onclick="closeMobileDrawer()">🍲 All Products</a>
+      <a href="track.html" class="drawer-link" style="color:var(--primary-maroon); font-weight:700;">📍 Track Your Order Live</a>
+      <a href="contact.html" class="drawer-link" style="color:var(--accent-gold-hover); font-weight:700;">📞 Contact Us &amp; Bulk Orders</a>
+      <a href="#why-us-section" class="drawer-link" onclick="closeMobileDrawer()">⭐ Why Chinnodu Foods</a>
+      <a href="#testimonials-section" class="drawer-link" onclick="closeMobileDrawer()">💬 Customer Reviews</a>
+      <a href="#story-section" class="drawer-link" onclick="closeMobileDrawer()">📜 Our Heritage Story</a>
+      <a href="#faq-section" class="drawer-link" onclick="closeMobileDrawer()">❓ FAQs &amp; Shipping</a>
+      <a href="privacy-policy.html" class="drawer-link">🛡️ Privacy &amp; Policies</a>
+      <a href="admin.html" class="drawer-link" style="color:var(--accent-gold); font-weight:700;">🛡️ Store Admin Portal</a>
+    </div>
+
+    <div class="drawer-footer">
+      <div class="drawer-help-box">
+        <p class="help-title">Need help with your order?</p>
+        <p class="help-phone">📞 +91 96766 98427 / 73829 14229</p>
+        <p class="help-time">9:00 AM – 9:00 PM IST (All Days)</p>
+      </div>
+      <a href="https://wa.me/919676698427?text=Namaste%20Chinnodu%20Foods" class="btn-primary drawer-wa-btn" target="_blank" rel="noopener noreferrer">
+        Chat with us on WhatsApp
+      </a>
+    </div>
+  </aside>
+
+  <!-- Hero Section -->
+  <section class="hero-section" id="home">
+    <div class="hero-bg-overlay"></div>
+    <div class="container hero-container">
+      
+      <!-- Hero Left: Content -->
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dot"></span>
+          <span>Authentic Andhra Heritage • 100% Homemade</span>
+        </div>
+        
+        <h1 class="hero-title">
+          The Royal Village Taste of <span class="highlight-text">Traditional Ruchulu</span>
+        </h1>
+        
+        <p class="hero-description">
+          Experience the unforgettable aroma of mom’s authentic recipes. Hand-pounded spices, pure cold wood-pressed oils, zero chemical preservatives, crafted in small batches and delivered straight to your doorstep across India and worldwide.
+        </p>
+
+        <!-- Hero Feature Bullets -->
+        <div class="hero-highlights">
+          <div class="highlight-pill">
+            <span class="pill-icon">🏺</span>
+            <span>Jaadi-Matured Pickles</span>
+          </div>
+          <div class="highlight-pill">
+            <span class="pill-icon">🫒</span>
+            <span>Wood-Pressed Pure Oils</span>
+          </div>
+          <div class="highlight-pill">
+            <span class="pill-icon">🌿</span>
+            <span>Zero Preservatives</span>
+          </div>
+          <div class="highlight-pill">
+            <span class="pill-icon">✈️</span>
+            <span>Global Express Delivery</span>
+          </div>
+        </div>
+
+        <!-- Hero Call to Actions -->
+        <div class="hero-cta-group">
+          <a href="#menu-catalog" class="btn-primary hero-btn-main">
+            <span>Explore All Delicacies</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+          
+          <a href="https://wa.me/917382914229?text=Hello%20Chinnodu%20Foods!%20Please%20send%20me%20your%20today%27s%20fresh%20delicacies%20list." target="_blank" rel="noopener noreferrer" class="btn-outline-gold hero-btn-wa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.464L0 24zm6.273-3.832c1.616.96 3.197 1.48 4.887 1.481 5.485 0 9.948-4.467 9.951-9.957.002-2.66-1.033-5.161-2.915-7.045C16.37 2.76 13.868 1.72 11.2 1.72c-5.49 0-9.956 4.467-9.959 9.96-.001 1.79.475 3.535 1.38 5.093l-.998 3.64 3.731-.977zm12.355-7.37c-.305-.152-1.805-.892-2.084-.993-.28-.101-.484-.152-.687.152-.203.305-.788 1.002-.966 1.206-.178.203-.356.228-.661.076-.305-.152-1.288-.475-2.454-1.517-.908-.81-1.52-1.812-1.698-2.117-.178-.305-.019-.47.133-.621.137-.136.305-.356.457-.533.152-.178.203-.305.305-.508.102-.203.051-.381-.025-.533-.076-.152-.687-1.657-.941-2.27-.248-.599-.5-.517-.688-.527l-.587-.01c-.203 0-.533.076-.813.381-.28.305-1.067 1.042-1.067 2.542 0 1.5 1.092 2.946 1.244 3.15.152.203 2.15 3.284 5.207 4.602.727.314 1.295.5 1.737.64.73.232 1.393.198 1.918.12.585-.087 1.805-.737 2.06-1.45.253-.712.253-1.322.178-1.45-.076-.127-.28-.203-.585-.355z"/>
+            </svg>
+            <span>Order on WhatsApp</span>
+          </a>
+        </div>
+
+        <!-- Social Proof Stats -->
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">18,500+</span>
+            <span class="stat-label">Happy Families Served</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">4.9 ★</span>
+            <span class="stat-label">Customer Rating</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Pure Village Taste</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Hero Right: Visual Showcase Frame -->
+      <div class="hero-visual">
+        <div class="visual-card-glass">
+          <img src="assets/images/hero-banner.jpg" alt="Authentic South Indian Andhra Pickles, Sweets, and Snacks spread" class="hero-main-img">
+          
+          <!-- Floating Badge 1 -->
+          <div class="floating-badge badge-top-left">
+            <div class="badge-icon">🌿</div>
+            <div class="badge-text">
+              <strong>Farm to Table</strong>
+              <span>Grown &amp; Prepared in Village</span>
+            </div>
+          </div>
+
+          <!-- Floating Badge 2 -->
+          <div class="floating-badge badge-bottom-right">
+            <div class="badge-icon">🔥</div>
+            <div class="badge-text">
+              <strong>Freshly Packed</strong>
+              <span>Made Fresh for Every Order</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Categories Showcase Strip (Dhanalakshmi + Maharaja Style) -->
+  <section class="categories-section" id="categories-section">
+    <div class="container">
+      
+      <div class="section-header text-center">
+        <span class="section-tag">Explore Traditional Ruchulu</span>
+        <h2 class="section-title">Our Heritage Specialities</h2>
+        <p class="section-desc">Select a category below to browse our freshly prepared homemade delicacies</p>
+      </div>
+
+      <!-- Categories Carousel / Slider Container -->
+      <div class="category-slider-wrapper">
+        <button type="button" class="cat-nav-btn cat-prev-btn" onclick="slideCategories('prev')" aria-label="Previous Category Slide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+
+        <div class="category-cards-grid" id="category-cards-slider">
+          
+          <!-- Category Card 1: Sweets -->
+          <div class="cat-card active" data-category="sweets" onclick="filterCatalog('sweets')">
+            <div class="cat-img-box">
+              <img src="assets/images/bellam-sunnunda.jpg" alt="Traditional Sweets" loading="lazy">
+              <span class="cat-tag-pill sweet-tag">Pure Ghee</span>
+            </div>
+            <div class="cat-content">
+              <h3 class="cat-name">Traditional Sweets</h3>
+              <span class="cat-telugu">సాంప్రదాయ మిఠాయిలు (10)</span>
+              <p class="cat-info">Bellam Sunnunda, Ragi Laddu, Nuvvulu Laddu, Ghee Arisalu, Kajjikayalu</p>
+              <span class="cat-arrow">View Sweets →</span>
+            </div>
+          </div>
+
+          <!-- Category Card 2: Savouries -->
+          <div class="cat-card" data-category="savouries" onclick="filterCatalog('savouries')">
+            <div class="cat-img-box">
+              <img src="assets/images/savouries.jpg" alt="Crispy Savouries" loading="lazy">
+              <span class="cat-tag-pill snack-tag">Crispy</span>
+            </div>
+            <div class="cat-content">
+              <h3 class="cat-name">Crispy Savouries</h3>
+              <span class="cat-telugu">కరకరలాడే పిండివంటలు (9)</span>
+              <p class="cat-info">Chegodilu, Janthikalu, Beetroot Janthikalu, Saggubiyyam Chekkalu, Boondhi</p>
+              <span class="cat-arrow">View Savouries →</span>
+            </div>
+          </div>
+
+          <!-- Category Card 3: Pickles -->
+          <div class="cat-card" data-category="pickles" onclick="filterCatalog('pickles')">
+            <div class="cat-img-box">
+              <img src="assets/images/avakaya-pickle.jpg" alt="Homemade Pickles" loading="lazy">
+              <span class="cat-tag-pill veg-tag">Homemade</span>
+            </div>
+            <div class="cat-content">
+              <h3 class="cat-name">Homemade Pickles</h3>
+              <span class="cat-telugu">సంప్రదాయ నిల్వ పచ్చళ్ళు (2)</span>
+              <p class="cat-info">Special Gongura Pickle &amp; Country Farm Tomata Nilva Pachadi</p>
+              <span class="cat-arrow">View Pickles →</span>
+            </div>
+          </div>
+
+          <!-- Category Card 4: Tandra -->
+          <div class="cat-card" data-category="tandra" onclick="filterCatalog('tandra')">
+            <div class="cat-img-box">
+              <img src="assets/images/mango-thandra-bellam.jpg" alt="Authentic Tandra" loading="lazy">
+              <span class="cat-tag-pill pure-tag">Sun-Dried</span>
+            </div>
+            <div class="cat-content">
+              <h3 class="cat-name">Authentic Tandra</h3>
+              <span class="cat-telugu">సాంప్రదాయ తాండ్ర (3)</span>
+              <p class="cat-info">Mango Thandra Bellam, Mango Thandra Sugar &amp; Rare Tati Thandra</p>
+              <span class="cat-arrow">View Tandra →</span>
+            </div>
+          </div>
+
+        </div>
+
+        <button type="button" class="cat-nav-btn cat-next-btn" onclick="slideCategories('next')" aria-label="Next Category Slide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <!-- Mobile Swipe Hint & Pagination Dots -->
+      <div class="cat-slider-indicators">
+        <div class="cat-swipe-hint">
+          <span class="cat-swipe-hand">👈</span>
+          <span>Slide left to explore all categories</span>
+          <span class="cat-swipe-hand">👉</span>
+        </div>
+        <div class="cat-dots-container" id="cat-dots-container">
+          <button type="button" class="cat-dot active" onclick="scrollToCategorySlide(0)" aria-label="Slide 1: Sweets"></button>
+          <button type="button" class="cat-dot" onclick="scrollToCategorySlide(1)" aria-label="Slide 2: Savouries"></button>
+          <button type="button" class="cat-dot" onclick="scrollToCategorySlide(2)" aria-label="Slide 3: Pickles"></button>
+          <button type="button" class="cat-dot" onclick="scrollToCategorySlide(3)" aria-label="Slide 4: Tandra"></button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Interactive Product Catalog Section (Dhanalakshmi + Minnie Intiruchulu Style) -->
+  <section class="menu-catalog-section" id="menu-catalog">
+    <div class="container">
+      
+      <div class="catalog-header-bar">
+        <div>
+          <span class="section-tag">Fresh Homemade Batches</span>
+          <h2 class="section-title" id="catalog-section-title">All Products (24 Delicacies)</h2>
+        </div>
+
+        <!-- Catalog Controls (Filters & Sorting) -->
+        <div class="catalog-controls">
+          <!-- Category Tabs -->
+          <div class="filter-pills-scroll">
+            <button class="filter-pill active" data-filter="all" onclick="filterCatalog('all')">All Products (24)</button>
+            <button class="filter-pill" data-filter="sweets" onclick="filterCatalog('sweets')">🍯 Traditional Sweets (10)</button>
+            <button class="filter-pill" data-filter="savouries" onclick="filterCatalog('savouries')">🥨 Crispy Savouries (9)</button>
+            <button class="filter-pill" data-filter="pickles" onclick="filterCatalog('pickles')">🌶️ Homemade Pickles (2)</button>
+            <button class="filter-pill" data-filter="tandra" onclick="filterCatalog('tandra')">🥭 Authentic Tandra (3)</button>
+          </div>
+
+          <!-- Sort Select Dropdown -->
+          <div class="sort-wrapper">
+            <label for="sort-select" class="sort-label">Sort by:</label>
+            <select id="sort-select" onchange="sortCatalog(this.value)">
+              <option value="featured">Featured / Bestselling</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="rating">Highest Rated</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Filter Pill Indicator / Search Notice -->
+      <div class="active-filter-indicator" id="active-filter-indicator" style="display:none;">
+        <span id="active-filter-text">Showing: All Products</span>
+        <button class="reset-filter-btn" onclick="filterCatalog('all')">Reset Filter</button>
+      </div>
+
+      <!-- Dynamic Product Cards Grid -->
+      <div class="product-cards-grid" id="product-cards-grid">
+        <!-- Rendered via JavaScript with 250g, 500g, 1kg dynamic weight selector -->
+      </div>
+
+      <!-- Empty State Container -->
+      <div class="empty-catalog-state" id="empty-catalog-state" style="display:none;">
+        <div class="empty-icon">🔍</div>
+        <h3>No products found</h3>
+        <p>Try searching for another keyword or reset the category filter.</p>
+        <button class="btn-primary" onclick="filterCatalog('all')">Show All Products</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Palle Ruchulu Heritage & Quality Assurance Section -->
+  <section class="why-us-section" id="why-us-section">
+    <div class="container">
+      
+      <div class="section-header text-center">
+        <span class="section-tag">Pure &amp; Uncompromised Quality</span>
+        <h2 class="section-title">The Secret Behind Our Authentic Taste</h2>
+        <p class="section-desc">Why thousands of families across India and overseas choose Chinnodu Foods</p>
+      </div>
+
+      <div class="trust-grid">
+        
+        <div class="trust-card">
+          <div class="trust-icon-box">🫒</div>
+          <h3 class="trust-card-title">100% Wood-Pressed Oils</h3>
+          <p class="trust-card-text">We strictly use pure cold wood-pressed groundnut and sesame oils. Zero refined oils, zero palm oil, ensuring maximum nutrition, health and authentic village flavor.</p>
+        </div>
+
+        <div class="trust-card">
+          <div class="trust-icon-box">🌶️</div>
+          <h3 class="trust-card-title">Handpicked Guntur Chillies</h3>
+          <p class="trust-card-text">Directly sourced sun-dried Guntur Mirchi, hand-cleaned and stone-ground to preserve natural oils and authentic aroma without any artificial red colorings.</p>
+        </div>
+
+        <div class="trust-card">
+          <div class="trust-icon-box">🏺</div>
+          <h3 class="trust-card-title">Aged in Traditional Ceramic Jaadis</h3>
+          <p class="trust-card-text">Our pickles are matured in authentic glazed ceramic pottery (Bharani/Jaadi), allowing the spices and oils to naturally ferment and develop deep, nostalgic flavors.</p>
+        </div>
+
+        <div class="trust-card">
+          <div class="trust-icon-box">📦</div>
+          <h3 class="trust-card-title">Hygienic 3-Layer Leak-Proof Packing</h3>
+          <p class="trust-card-text">Food-grade vacuum sealed containers with tamper-evident induction seals and spill-proof outer packing, engineered for safe transit across India and International courier.</p>
+        </div>
+
+      </div>
+
+      <!-- Trust Badges Strip -->
+      <div class="badges-strip">
+        <div class="strip-item">
+          <span class="badge-icon-small">🛡️</span>
+          <span>FSSAI Certified Hygiene</span>
+        </div>
+        <div class="strip-item">
+          <span class="badge-icon-small">🚫</span>
+          <span>No Added Preservatives</span>
+        </div>
+        <div class="strip-item">
+          <span class="badge-icon-small">👩‍🍳</span>
+          <span>Made by Village Homemakers</span>
+        </div>
+        <div class="strip-item">
+          <span class="badge-icon-small">⚡</span>
+          <span>Dispatched within 24 Hours</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Real Customer Reviews & Testimonials Carousel -->
+  <section class="testimonials-section" id="testimonials-section">
+    <div class="container">
+      
+      <div class="section-header text-center">
+        <span class="section-tag">Loved by 18,500+ Foodies</span>
+        <h2 class="section-title">What Our Customers Say</h2>
+        <p class="section-desc">Authentic feedback from families who relish our homemade foods</p>
+      </div>
+
+      <div class="testimonials-grid">
+        
+        <!-- Review 1 -->
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <p class="review-quote">"The Gongura Chicken Pickle took me straight back to my grandmother's home in Godavari! The chicken pieces are generous, juicy, and the spice blend is perfection with hot steamed rice."</p>
+          <div class="reviewer-meta">
+            <div class="reviewer-avatar">VS</div>
+            <div>
+              <h4 class="reviewer-name">Venkat S.</h4>
+              <span class="reviewer-location">📍 Hyderabad, Telangana • Verified Buyer</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Review 2 -->
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <p class="review-quote">"Ordered Avakaya and Bandar Laddu for the Sankranti festival. The laddus melt in the mouth with pure desi ghee aroma, and the Avakaya has that quintessential crunchy mango bite and mustard kick."</p>
+          <div class="reviewer-meta">
+            <div class="reviewer-avatar">LN</div>
+            <div>
+              <h4 class="reviewer-name">Lakshmi Narayana</h4>
+              <span class="reviewer-location">📍 Bengaluru, Karnataka • Verified Buyer</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Review 3 -->
+        <div class="review-card">
+          <div class="review-stars">★★★★★</div>
+          <p class="review-quote">"We ordered 5kg of snacks and non-veg pickles shipped to Dallas, USA. The vacuum packing was pristine with zero oil leaks! Best authentic Andhra food overseas experience ever."</p>
+          <div class="reviewer-meta">
+            <div class="reviewer-avatar">PR</div>
+            <div>
+              <h4 class="reviewer-name">Pranathi Rao</h4>
+              <span class="reviewer-location">📍 Dallas, TX (USA) • International Order</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Heritage Brand Story Section (Maharaja & Patnamlo Vibe) -->
+  <section class="story-section" id="story-section">
+    <div class="container">
+      <div class="story-card-wrapper">
+        <div class="story-image-wrap">
+          <img src="assets/images/hero-banner.jpg" alt="Chinnodu Foods Heritage Kitchen" loading="lazy">
+          <div class="story-badge">
+            <span class="years-num">15+</span>
+            <span class="years-text">Years of Village Culinary Tradition</span>
+          </div>
+        </div>
+        <div class="story-content">
+          <span class="section-tag">Our Heritage &amp; Roots</span>
+          <h2 class="story-title">From Our Village Kitchen to Your Dining Table</h2>
+          <p class="story-para">
+            In our hometown, pickle-making and sweet preparation wasn't just cooking—it was a cherished community festival. Every summer, hand-picked raw sour mangoes were cut under shade, sun-dried Guntur chillies were ground on traditional granite stone mortars, and aromatic cold wood-pressed groundnut oil was poured generously into ceramic jaadis.
+          </p>
+          <p class="story-para">
+            At <strong>Chinnodu Foods</strong>, we founded this initiative with one pure vision: to bring that authentic, chemical-free, mother's village taste to every city home, ensuring our heritage recipes continue to nourish upcoming generations.
+          </p>
+          <div class="story-points">
+            <div class="story-point-item">
+              <span class="point-check">✓</span>
+              <span>100% Traditional Handcrafted Preparation</span>
+            </div>
+            <div class="story-point-item">
+              <span class="point-check">✓</span>
+              <span>Direct Fair-Trade Sourcing from Local Farmers</span>
+            </div>
+            <div class="story-point-item">
+              <span class="point-check">✓</span>
+              <span>Empowering Rural Women Artisans</span>
+            </div>
+          </div>
+          <a href="#menu-catalog" class="btn-primary story-btn">Explore Our Creations</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Order & Fast Delivery Process Section -->
+  <section class="how-to-order-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">Seamless &amp; Fast</span>
+        <h2 class="section-title">How To Order in 3 Simple Steps</h2>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Select Delicacies &amp; Weight</h3>
+          <p class="step-text">Choose your favorite pickles, sweets, or snacks and pick your desired quantity (250g, 500g, or 1kg).</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Order on Site or via WhatsApp</h3>
+          <p class="step-text">Checkout directly using our fast checkout modal, or click "Order via WhatsApp" to send your pre-filled cart instantly.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Fresh Delivery to Your Doorstep</h3>
+          <p class="step-text">We prepare a fresh batch, seal it in leak-proof food-grade containers, and dispatch via express courier with live tracking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Frequently Asked Questions (FAQ) Section -->
+  <section class="faq-section" id="faq-section">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="section-tag">Got Questions?</span>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-desc">Everything you need to know about our foods, shelf life, and shipping</p>
+      </div>
+
+      <div class="faq-accordion-list">
+        
+        <div class="faq-item">
+          <button class="faq-question-btn" onclick="toggleFaq(this)">
+            <span>What is the shelf life of your pickles and how should I store them?</span>
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Our Veg Pickles have a shelf life of <strong>9 to 12 months</strong>, while Non-Veg Pickles have a shelf life of <strong>3 to 4 months</strong> at room temperature (and up to 6 months when refrigerated). Always use a dry, clean spoon and ensure the oil layer remains on top.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question-btn" onclick="toggleFaq(this)">
+            <span>Do you use palm oil or artificial preservatives?</span>
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-answer">
+            <p><strong>Absolutely NOT.</strong> We only use 100% pure cold wood-pressed groundnut oil, sesame oil, and pure desi cow ghee. We never add vinegar, preservatives, MSG, or artificial food coloring.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question-btn" onclick="toggleFaq(this)">
+            <span>How does WhatsApp ordering work?</span>
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>When you click "Order via WhatsApp" on any product or your cart, a pre-formatted message listing your items, weights, and total amount is generated. Our team confirms your delivery address and shares UPI payment details instantly.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question-btn" onclick="toggleFaq(this)">
+            <span>Do you ship internationally (USA, UK, Canada, Australia)?</span>
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Yes! We regularly ship international parcels via DHL and FedEx express courier with commercial leak-proof vacuum canning. International orders can be easily placed through our WhatsApp support.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question-btn" onclick="toggleFaq(this)">
+            <span>How much is the shipping cost within India?</span>
+            <span class="faq-arrow">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Shipping is <strong>100% FREE on all orders above ₹999</strong> across India! For orders below ₹999, a nominal standard express shipping fee of ₹79 applies.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Big Call to Action Banner -->
+  <section class="cta-banner-section">
+    <div class="container">
+      <div class="cta-banner-content">
+        <span class="cta-badge">Fresh Batches Available Now</span>
+        <h2 class="cta-title">Craving the Authentic Taste of Home?</h2>
+        <p class="cta-subtitle">Order today and treat your family to delicious Andhra traditional sweets, fiery pickles, and crunchy snacks.</p>
+        <div class="cta-btn-group">
+          <a href="#menu-catalog" class="btn-primary">Browse All Products &amp; Order</a>
+          <a href="https://wa.me/919676698427?text=Hello%20Chinnodu%20Foods!%20I%20want%20to%20order%20special%20pickles%20and%20sweets." target="_blank" rel="noopener noreferrer" class="btn-wa-gold">Chat Directly with Us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      
+      <!-- Footer Col 1: Brand Info -->
+      <div class="footer-col brand-col">
+        <div class="footer-logo">
+          <div class="logo-emblem">
+            <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+          </div>
+          <span class="footer-brand-title">Chinnodu Foods</span>
+        </div>
+        <p class="footer-tagline">chinnodufoods.com • Home of Traditional Items • All Snack Items • Pure Goodness</p>
+        <div class="fssai-pill">
+          <span class="fssai-icon">🥗</span>
+          <span>FSSAI Certified Cloud Kitchen</span>
+        </div>
+      </div>
+
+      <!-- Footer Col 2: Categories -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Menu Categories</h4>
+        <ul class="footer-links">
+          <li><a href="#menu-catalog" onclick="filterCatalog('sweets')">Traditional Sweets (Sunnunda, Arisalu)</a></li>
+          <li><a href="#menu-catalog" onclick="filterCatalog('savouries')">Crispy Savouries (Chegodilu, Chekkalu)</a></li>
+          <li><a href="#menu-catalog" onclick="filterCatalog('pickles')">Homemade Pickles (Avakaya, Gongura)</a></li>
+          <li><a href="#menu-catalog" onclick="filterCatalog('tandra')">Authentic Thandra (Mango, Tati)</a></li>
+          <li><a href="#menu-catalog" onclick="filterCatalog('all')">View All 25 Delicacies</a></li>
+        </ul>
+      </div>
+
+      <!-- Footer Col 3: Quick Links -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Quick Links</h4>
+        <ul class="footer-links">
+          <li><a href="#home">Home</a></li>
+          <li><a href="#categories-section">Explore Collections</a></li>
+          <li><a href="track.html" style="color:var(--accent-gold); font-weight:700;">📍 Track My Order Live</a></li>
+          <li><a href="#why-us-section">Our Quality Promise</a></li>
+          <li><a href="#story-section">Our Heritage Story</a></li>
+          <li><a href="#testimonials-section">Customer Reviews</a></li>
+          <li><a href="contact.html">📞 Contact Us &amp; Bulk Orders</a></li>
+          <li><a href="admin.html">🛡️ Store Admin Portal</a></li>
+        </ul>
+      </div>
+
+      <!-- Footer Col 4: Policies & Legal -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Policies &amp; Legal</h4>
+        <ul class="footer-links">
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+          <li><a href="shipping-policy.html">Shipping &amp; Delivery</a></li>
+          <li><a href="refund-policy.html">Cancellation &amp; Refund</a></li>
+          <li><a href="contact.html">Grievance Redressal</a></li>
+          <li><a href="track.html">Courier Tracking Portal</a></li>
+        </ul>
+      </div>
+
+      <!-- Footer Col 5: Contact & Hours -->
+      <div class="footer-col contact-col">
+        <h4 class="footer-heading">Contact &amp; Delivery</h4>
+        <ul class="footer-contact-list">
+          <li>
+            <span class="icon">📞</span>
+            <span id="footer-contact-phone">+91 96766 98427 / 73829 14229</span>
+          </li>
+          <li>
+            <span class="icon">✉️</span>
+            <span>orders@chinnodufoods.com</span>
+          </li>
+          <li>
+            <span class="icon">📍</span>
+            <span>Chinnodu Foods Cloud Kitchen • Online Store (Express Pan-India Delivery)</span>
+          </li>
+          <li>
+            <span class="icon">⏰</span>
+            <span>Monday – Sunday: 9:00 AM – 9:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Footer Bottom Copyright Bar -->
+    <div class="footer-bottom">
+      <div class="container footer-bottom-container">
+        <p>
+          © 2026 Chinnodu Foods. All rights reserved. Handcrafted with love. • 
+          <a href="privacy-policy.html" style="color:inherit; text-decoration:underline;">Privacy</a> • 
+          <a href="terms-conditions.html" style="color:inherit; text-decoration:underline;">Terms</a> • 
+          <a href="shipping-policy.html" style="color:inherit; text-decoration:underline;">Shipping</a> • 
+          <a href="refund-policy.html" style="color:inherit; text-decoration:underline;">Refunds</a> • 
+          <a href="contact.html" style="color:inherit; text-decoration:underline;">Contact</a> • 
+          <a href="admin.html" style="color:inherit; text-decoration:none; opacity:0.8;">Admin Portal</a>
+        </p>
+        <div class="payment-icons-strip">
+          <span class="pay-badge">Google Pay</span>
+          <span class="pay-badge">PhonePe</span>
+          <span class="pay-badge">Paytm</span>
+          <span class="pay-badge">UPI (BHIM)</span>
+          <span class="pay-badge" style="background:#059669; color:#fff; font-weight:700;">100% Secure Prepaid</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Slide-out Cart Drawer -->
+  <div class="cart-drawer-overlay" id="cart-drawer-overlay" onclick="closeCartDrawer()"></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-label="Shopping Cart">
+    
+    <div class="cart-drawer-header">
+      <div class="cart-header-title-box">
+        <h3>Your Shopping Cart</h3>
+        <span class="cart-items-count-text" id="cart-drawer-items-count">0 items</span>
+      </div>
+      <button class="cart-drawer-close-btn" id="cart-drawer-close-btn" onclick="closeCartDrawer()" aria-label="Close Cart">&times;</button>
+    </div>
+
+    <!-- Free Delivery Progress Bar (Maharaja style) -->
+    <div class="free-shipping-bar-box">
+      <div class="free-shipping-text" id="free-shipping-text">
+        Add ₹999 more for <strong>FREE DELIVERY 🚚</strong>
+      </div>
+      <div class="free-shipping-track">
+        <div class="free-shipping-fill" id="free-shipping-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Cart Items Scroll Area -->
+    <div class="cart-drawer-items" id="cart-drawer-items">
+      <!-- Items dynamically populated via JavaScript -->
+    </div>
+
+    <!-- Cart Empty State -->
+    <div class="cart-empty-view" id="cart-empty-view">
+      <div class="empty-cart-icon">🛒</div>
+      <h4>Your cart is empty</h4>
+      <p>Taste the richness of Andhra homemade pickles, sweets, and savouries!</p>
+      <button class="btn-primary" onclick="closeCartDrawer(); window.location.href='#menu-catalog';">Explore Delicacies</button>
+    </div>
+
+    <!-- Machine Learning (ML) Smart Taste Pairings -->
+    <div id="cart-ml-recommendations" class="cart-ml-recommendations-box" style="display:none;"></div>
+
+    <!-- Cart Footer with Pricing & Checkout -->
+    <div class="cart-drawer-footer" id="cart-drawer-footer">
+      
+      <!-- Promo code toggle -->
+      <div class="coupon-box">
+        <input type="text" id="coupon-input" placeholder="Promo code (Try: RUCHULU10)">
+        <button class="apply-coupon-btn" onclick="applyCoupon()">Apply</button>
+      </div>
+      <div class="coupon-msg" id="coupon-msg"></div>
+
+      <!-- Bill summary breakdown -->
+      <div class="bill-summary">
+        <div class="bill-row">
+          <span>Item Total:</span>
+          <span id="bill-subtotal">₹0</span>
+        </div>
+        <div class="bill-row" id="bill-discount-row" style="display: none;">
+          <span>Discount Applied:</span>
+          <span class="text-green" id="bill-discount">-₹0</span>
+        </div>
+        <div class="bill-row">
+          <span>Shipping:</span>
+          <span id="bill-shipping">₹79</span>
+        </div>
+        <div class="bill-divider"></div>
+        <div class="bill-row bill-grand-total">
+          <span>Total Amount:</span>
+          <span id="bill-grandtotal">₹0</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="cart-actions-group">
+        <!-- 1-Click WhatsApp Order Button -->
+        <button class="btn-wa-checkout" onclick="checkoutViaWhatsApp()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.464L0 24zm6.273-3.832c1.616.96 3.197 1.48 4.887 1.481 5.485 0 9.948-4.467 9.951-9.957.002-2.66-1.033-5.161-2.915-7.045C16.37 2.76 13.868 1.72 11.2 1.72c-5.49 0-9.956 4.467-9.959 9.96-.001 1.79.475 3.535 1.38 5.093l-.998 3.64 3.731-.977zm12.355-7.37c-.305-.152-1.805-.892-2.084-.993-.28-.101-.484-.152-.687.152-.203.305-.788 1.002-.966 1.206-.178.203-.356.228-.661.076-.305-.152-1.288-.475-2.454-1.517-.908-.81-1.52-1.812-1.698-2.117-.178-.305-.019-.47.133-.621.137-.136.305-.356.457-.533.152-.178.203-.305.305-.508.102-.203.051-.381-.025-.533-.076-.152-.687-1.657-.941-2.27-.248-.599-.5-.517-.688-.527l-.587-.01c-.203 0-.533.076-.813.381-.28.305-1.067 1.042-1.067 2.542 0 1.5 1.092 2.946 1.244 3.15.152.203 2.15 3.284 5.207 4.602.727.314 1.295.5 1.737.64.73.232 1.393.198 1.918.12.585-.087 1.805-.737 2.06-1.45.253-.712.253-1.322.178-1.45-.076-.127-.28-.203-.585-.355z"/>
+          </svg>
+          <span>Order via WhatsApp (1-Click)</span>
+        </button>
+
+        <!-- Standard Online Checkout Button -->
+        <button class="btn-primary btn-checkout-online" onclick="openCheckoutModal()">
+          <span>Proceed to Online Checkout →</span>
+        </button>
+      </div>
+
+    </div>
+
+  </aside>
+
+  <!-- Product Quick View Modal -->
+  <div class="modal-overlay" id="quick-view-overlay" onclick="closeQuickViewModal()">
+    <div class="modal-card quick-view-card" onclick="event.stopPropagation()">
+      <div class="modal-sheet-handle"></div>
+      <button class="modal-close-btn" onclick="closeQuickViewModal()" aria-label="Close details">&times;</button>
+      
+      <div class="quick-view-grid">
+        <!-- Modal Image -->
+        <div class="quick-view-img-box">
+          <img id="modal-product-img" src="assets/images/bellam-sunnunda.jpg" alt="Product Detail">
+          <span class="modal-badge-tag" id="modal-badge-tag">Customer Favorite</span>
+        </div>
+
+        <!-- Modal Info -->
+        <div class="quick-view-details">
+          <span class="modal-category" id="modal-product-cat">Traditional Sweets</span>
+          <h2 class="modal-title" id="modal-product-title">Bellam Sunnunda</h2>
+          <span class="modal-telugu-name" id="modal-product-telugu">బెల్లం సున్నుండ</span>
+
+          <!-- Spice & Rating Pill -->
+          <div class="modal-meta-row">
+            <span class="modal-diet-pill veg" id="modal-diet-pill">🟢 Pure Vegetarian</span>
+            <span class="rating-stars" id="modal-product-rating">★★★★★ 5.0 (310 reviews)</span>
+            <span class="spice-meter-pill" id="modal-spice-meter">🍯 Pure Ghee &amp; Jaggery</span>
+          </div>
+
+          <p class="modal-description" id="modal-product-desc">
+            Traditional Andhra Urad Dal Sunnunda prepared with aromatic roasted black gram, organic jaggery, and generous pure desi ghee. Rich in iron and protein.
+          </p>
+
+          <!-- Specifications List -->
+          <div class="modal-specs">
+            <div class="spec-row">
+              <span class="spec-title">Shelf Life:</span>
+              <span class="spec-val" id="modal-shelf-life">30 Days (Store in airtight container)</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-title">Key Ingredients:</span>
+              <span class="spec-val" id="modal-ingredients">Roasted Urad Dal, Organic Jaggery, Pure Desi Ghee, Cardamom</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-title">Authenticity:</span>
+              <span class="spec-val">100% Traditional Village Kitchen Recipe</span>
+            </div>
+          </div>
+
+          <!-- Weight Selection In Modal -->
+          <div class="modal-weight-selector">
+            <span class="weight-label">Select Pack Size / Weight:</span>
+            <div class="weight-options-group" id="modal-weight-options">
+              <!-- Dynamically populated buttons -->
+            </div>
+          </div>
+
+          <!-- Price & Add To Cart Button (Sticky on mobile for maximum convenience) -->
+          <div class="modal-buy-box">
+            <div class="modal-price-box">
+              <div style="display:flex; align-items:baseline; gap:6px;">
+                <span class="price-currency">Price:</span>
+                <span class="price-val" id="modal-price-display">₹470</span>
+              </div>
+              <span class="modal-delivery-display" id="modal-delivery-display" style="font-size:0.78rem; color:#78350F; background:#FEF3C7; padding:3px 9px; border-radius:999px; font-weight:700; border:1px solid rgba(201, 151, 38, 0.35); display:inline-flex; align-items:center; gap:4px;">🚚 Delivery: ₹40</span>
+            </div>
+
+            <div class="modal-actions">
+              <div class="qty-stepper">
+                <button type="button" onclick="decrementModalQty()" aria-label="Decrease quantity">-</button>
+                <input type="number" id="modal-qty-input" value="1" min="1" readonly aria-label="Quantity">
+                <button type="button" onclick="incrementModalQty()" aria-label="Increase quantity">+</button>
+              </div>
+
+              <button type="button" class="btn-primary modal-add-cart-btn" onclick="addModalItemToCart()">
+                <span>Add to Cart 🛒</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Direct Online Checkout Modal -->
+  <div class="modal-overlay" id="checkout-overlay" onclick="closeCheckoutModal()">
+    <div class="modal-card checkout-card" onclick="event.stopPropagation()">
+      <div class="modal-sheet-handle"></div>
+      <button class="modal-close-btn" onclick="closeCheckoutModal()" aria-label="Close Checkout">&times;</button>
+      
+      <div class="checkout-header">
+        <div class="logo-emblem" style="width:44px; height:44px; flex-shrink:0;">
+          <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+        </div>
+        <div>
+          <h3>Complete Your Order</h3>
+          <p>chinnodufoods.com • Authentic Andhra Homemade Delicacies</p>
+        </div>
+      </div>
+
+      <div class="checkout-body">
+        <form id="checkout-form" onsubmit="handleCheckoutSubmit(event)">
+          
+          <div class="form-section-title">1. Delivery Address</div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cust-name">Full Name *</label>
+              <input type="text" id="cust-name" placeholder="e.g. Ramesh Kumar" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="cust-phone">WhatsApp / Mobile Number *</label>
+              <input type="tel" id="cust-phone" placeholder="10-digit mobile number" required pattern="[0-9]{10}" inputmode="tel" autocomplete="tel" maxlength="10">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="cust-address">Street Address (House/Flat No., Area, Landmark) *</label>
+            <textarea id="cust-address" rows="2" placeholder="e.g. Flat 302, Sai Residency, Near Temple, Main Road" required autocomplete="street-address"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cust-city">City / Town *</label>
+              <input type="text" id="cust-city" placeholder="e.g. Hyderabad / Kakinada" required autocomplete="address-level2" oninput="recalculateCheckoutTotal()">
+            </div>
+            <div class="form-group">
+              <label for="cust-pincode">Pincode *</label>
+              <input type="text" id="cust-pincode" placeholder="6-digit pincode" required pattern="[0-9]{6}" inputmode="numeric" autocomplete="postal-code" maxlength="6" oninput="recalculateCheckoutTotal()">
+            </div>
+            <div class="form-group">
+              <label for="cust-state">State *</label>
+              <select id="cust-state" required autocomplete="address-level1" onchange="recalculateCheckoutTotal()">
+                <option value="Andhra Pradesh" selected>Andhra Pradesh</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Delhi">Delhi &amp; NCR</option>
+                <option value="Other States">Other Indian State</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-section-title">2. Payment Method (100% Prepaid Only)</div>
+          <div class="payment-method-selector" style="grid-template-columns: 1fr;">
+            <label class="pay-option" style="grid-column: 1 / -1;">
+              <input type="radio" name="payment-method" value="upi" checked>
+              <span class="pay-custom-box" style="border-color:var(--primary-maroon); background:#FFFDF9;">
+                <span class="pay-title" style="display:flex; align-items:center; gap:6px;">
+                  <span>⚡ Instant UPI Payment</span>
+                  <span style="font-size:0.75rem; background:#DCFCE7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:700;">Prepaid Only</span>
+                </span>
+                <span class="pay-sub">PhonePe • Google Pay • Paytm • BHIM • UPI ID (Prepaid only to ensure fresh kitchen preparation)</span>
+              </span>
+            </label>
+          </div>
+
+          <!-- Dynamic UPI QR & Deeplink Screen -->
+          <div class="upi-payment-details-box" id="upi-box">
+            <!-- Amount Callout Badge -->
+            <div class="qr-amount-callout">
+              <span>Pay Exactly:</span>
+              <strong id="qr-payable-amount">₹0</strong>
+            </div>
+
+            <div class="qr-container">
+              <div class="qr-mock-code" style="background:#fff; padding:6px; position:relative;">
+                <img id="dynamic-checkout-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi%3A%2F%2Fpay%3Fpa%3D9676698427-2%40ybl%26pn%3DChinnodu%2520Foods%26cu%3DINR" alt="PhonePe UPI QR Code" style="width:100%; height:100%; object-fit:contain; border-radius:4px;">
+              </div>
+              <div class="qr-info-wrap">
+                <p class="qr-title">Scan or Tap to Pay via UPI</p>
+                <p class="qr-id">UPI ID: <strong>9676698427-2@ybl</strong></p>
+                <p class="qr-hint">Works with PhonePe, Google Pay, Paytm, BHIM</p>
+                
+                <!-- Quick Mobile UPI Action Buttons -->
+                <div class="upi-action-btns-row">
+                  <a href="upi://pay?pa=9676698427-2%40ybl&pn=Chinnodu%20Foods&cu=INR" class="btn-upi-app" id="btn-upi-app-pay">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <span>⚡ Pay via UPI App</span>
+                  </a>
+                  <button type="button" class="btn-copy-upi" onclick="copyUpiId()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span id="copy-upi-btn-text">Copy UPI ID</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12-Digit UPI Transaction ID / UTR Input Section -->
+            <div class="upi-utr-box">
+              <div class="utr-header">
+                <label for="cust-utr">
+                  <span>12-Digit UPI Transaction ID / UTR *</span>
+                </label>
+                <span class="utr-badge">Required to Confirm</span>
+              </div>
+              <div class="utr-input-wrapper">
+                <input type="text" id="cust-utr" placeholder="e.g. 426819203812" required pattern="[0-9A-Za-z]{8,22}" maxlength="22" autocomplete="off">
+                <button type="button" class="btn-paste-utr" onclick="pasteUtrFromClipboard()" title="Paste from clipboard">
+                  📋 Paste
+                </button>
+              </div>
+              <small class="utr-help-text">
+                💡 <strong>How to find:</strong> Open PhonePe / Google Pay / Paytm ➔ Payment Details ➔ Copy the 12-digit <strong>UTR</strong> or <strong>UPI Ref No.</strong>
+              </small>
+            </div>
+          </div>
+
+          <!-- Order Summary in Checkout -->
+          <div class="checkout-summary-box">
+            <div class="checkout-sum-row">
+              <span>Items Selected:</span>
+              <span id="checkout-items-qty">0 items</span>
+            </div>
+            <div class="checkout-sum-row" id="checkout-subtotal-row">
+              <span>Items Subtotal:</span>
+              <span id="checkout-items-subtotal">₹0</span>
+            </div>
+            <div class="checkout-sum-row" id="checkout-discount-row" style="display:none; color:#059669;">
+              <span>Coupon Discount:</span>
+              <span id="checkout-discount-amount">-₹0</span>
+            </div>
+            <div class="checkout-sum-row" id="checkout-shipping-row">
+              <span id="checkout-shipping-label">🚚 Delivery Charge (Andhra Pradesh):</span>
+              <span id="checkout-shipping-amount">₹40</span>
+            </div>
+            <div class="checkout-sum-row total-payable-row" style="border-top:1px solid #E5D5C5; padding-top:6px; margin-top:4px;">
+              <span>Total Payable Amount:</span>
+              <strong class="checkout-grand-total" id="checkout-total-payable">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Submit Order (Sticky on mobile) -->
+          <div class="checkout-submit-bar">
+            <button type="submit" class="btn-primary checkout-submit-btn">
+              <span>Place Order &amp; Confirm</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Order Success Modal -->
+  <div class="modal-overlay" id="order-success-overlay">
+    <div class="modal-card success-card" onclick="event.stopPropagation()">
+      <div class="modal-sheet-handle"></div>
+      <div class="success-icon-wrap">🎉</div>
+      <h2 class="success-title">Order Placed Successfully!</h2>
+      <p class="success-msg">
+        Thank you for choosing Chinnodu Foods! Your order <strong id="success-order-id">#CF-98412</strong> has been received and our kitchen will prepare your fresh batch.
+      </p>
+
+      <div class="order-receipt-summary" id="success-receipt-summary">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="success-actions">
+        <button type="button" id="success-invoice-btn" class="btn-primary" style="margin-bottom:8px; width:100%; justify-content:center; background:linear-gradient(135deg, #15803D, #166534);" onclick="printCustomerInvoice(document.getElementById('success-order-id').textContent.replace('#',''))">
+          <span>🧾 Print / Download Tax Invoice (PDF)</span>
+        </button>
+        <button type="button" id="success-live-track-btn" class="btn-outline-gold" style="margin-bottom:8px; width:100%; justify-content:center;" onclick="closeSuccessModal(); openTrackOrderModal(document.getElementById('success-order-id').textContent.replace('#',''));">
+          <span>🔍 Track Order Live on Website</span>
+        </button>
+        <a href="#" id="success-whatsapp-track-btn" class="btn-wa-gold" target="_blank" rel="noopener noreferrer">
+          <span>📲 Track / Confirm on WhatsApp</span>
+        </a>
+        <button type="button" class="btn-outline-gold" onclick="closeSuccessModal()">
+          <span>Continue Browsing Menu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Customer Track Order Modal -->
+  <div class="modal-overlay" id="track-order-overlay" onclick="closeTrackOrderModal()">
+    <div class="modal-card track-order-card" onclick="event.stopPropagation()">
+      <div class="modal-sheet-handle"></div>
+      
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <span style="font-size:1.5rem;">📍</span>
+          <div>
+            <h3 class="modal-title" style="margin:0;">Track Your Order</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">Real-time kitchen dispatch &amp; courier delivery status</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeTrackOrderModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding:1.25rem 1.5rem;">
+        <form onsubmit="handleTrackOrderSubmit(event)" class="track-search-form">
+          <div class="track-input-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="track-order-query" placeholder="Enter Order ID (e.g. CF-84291) or Phone..." required autocomplete="off">
+          </div>
+          <button type="submit" class="btn-primary track-search-btn">
+            <span>Track Order</span>
+          </button>
+        </form>
+
+        <!-- Track Result Container -->
+        <div id="track-result-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Sticky Cart Button (Mobile & Desktop) -->
+  <button class="floating-cart-pill" id="floating-cart-pill" onclick="openCartDrawer()" aria-label="Open Shopping Cart">
+    <div class="cart-pill-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="21" r="1"></circle>
+        <circle cx="20" cy="21" r="1"></circle>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+      </svg>
+      <span class="floating-cart-count" id="floating-cart-count">0</span>
+    </div>
+    <span class="floating-cart-total" id="floating-cart-total">View Cart • ₹0</span>
+  </button>
+
+  <!-- Floating Draggable AI Voice & NLP Assistant Bar (Right Side / Live Moveable) -->
+  <button class="floating-voice-ai-btn" id="floating-voice-ai-btn" aria-label="Open Chinnodu AI Voice Assistant" title="Hold &amp; Drag to move anywhere • Click to speak (Press 'V')">
+    <span class="voice-ai-drag-handle" title="Drag anywhere across the screen" aria-hidden="true">
+      <svg width="8" height="13" viewBox="0 0 8 13" fill="currentColor">
+        <circle cx="2" cy="2" r="1.2"/>
+        <circle cx="6" cy="2" r="1.2"/>
+        <circle cx="2" cy="6.5" r="1.2"/>
+        <circle cx="6" cy="6.5" r="1.2"/>
+        <circle cx="2" cy="11" r="1.2"/>
+        <circle cx="6" cy="11" r="1.2"/>
+      </svg>
+    </span>
+    <div class="voice-ai-mic-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+      <span class="voice-ai-pulse-ring"></span>
+    </div>
+    <span class="voice-ai-pill-label">Voice AI 🎙️</span>
+  </button>
+
+  <!-- Floating Mobile Quick Search Pill (As shown in mobile reference design) -->
+  <div class="mobile-bottom-search-bar" id="mobile-bottom-search-bar">
+    <input type="text" id="mobile-search-pill-input" placeholder="Enter Keyword" autocomplete="off" onkeydown="if(event.key==='Enter'){handleMobilePillSearch();}">
+    <button type="button" class="btn-mobile-pill-search" onclick="handleMobilePillSearch()" aria-label="Search delicacies">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- CHINNODU AI VOICE & NLP ASSISTANT CONCIERGE MODAL -->
+  <!-- ===================================================================== -->
+  <div class="voice-ai-modal-overlay" id="voice-ai-modal-overlay" onclick="handleVoiceOverlayClick(event)">
+    <div class="voice-ai-card" id="voice-ai-card">
+      
+      <!-- Header -->
+      <div class="voice-ai-header">
+        <div class="voice-ai-branding">
+          <div class="voice-ai-avatar">🎙️</div>
+          <div>
+            <h3 class="voice-ai-title">Chinnodu AI Concierge</h3>
+            <span class="voice-ai-badge">NLP + ML Cuisine Intelligence</span>
+          </div>
+        </div>
+        <div class="voice-ai-header-actions">
+          <button type="button" class="btn-voice-sound-toggle" id="btn-voice-sound-toggle" onclick="toggleVoiceSpeechSynthesis()" title="Mute / Unmute Assistant Speech">
+            🔊
+          </button>
+          <button type="button" class="btn-voice-close" onclick="closeVoiceAssistantModal()" aria-label="Close Voice Assistant">&times;</button>
+        </div>
+      </div>
+
+      <!-- Live Waveform Visualizer & Listening State -->
+      <div class="voice-ai-visualizer-box" id="voice-ai-visualizer-box">
+        <div class="voice-soundwaves" id="voice-soundwaves">
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+        </div>
+        <div class="voice-status-indicator" id="voice-status-indicator">
+          <span class="status-dot"></span>
+          <span id="voice-status-text">Ready • Tap microphone or speak...</span>
+        </div>
+      </div>
+
+      <!-- Transcript & NLP Understanding Box -->
+      <div class="voice-transcript-container" id="voice-transcript-container">
+        <div class="voice-bubble assistant" id="voice-assistant-greeting">
+          Namaste! 🙏 I am your <strong>Chinnodu Foods AI Concierge</strong>. You can speak in English or Telugu!
+          <br><br>
+          Try saying:
+          <br>• <em>"Add 500g Bellam Sunnunda to my cart"</em>
+          <br>• <em>"Show me Andhra traditional sweets under 350"</em>
+          <br>• <em>"What ingredients do you use in Ghee Arisalu?"</em>
+          <br>• <em>"Track my order status"</em>
+        </div>
+        <div class="voice-nlp-chips" id="voice-nlp-chips" style="display:none;"></div>
+      </div>
+
+      <!-- Quick Action Voice Chips -->
+      <div class="voice-quick-chips">
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Add 500g Bellam Sunnunda')">
+          🍯 Add Sunnunda
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show authentic sweets')">
+          🪔 Traditional Sweets
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Find Andhra Gongura Pickle')">
+          🌿 Gongura Pickle
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show Godavari Chegodilu')">
+          🥨 Chegodilu Snacks
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show sun dried Mango Thandra')">
+          🥭 Mango Thandra
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Tell me about ingredients and pure cow ghee')">
+          ✨ Purity &amp; Ghee
+        </button>
+        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Track my order')">
+          📍 Track Order
+        </button>
+      </div>
+
+      <!-- Bottom Voice Controls & Fallback Input -->
+      <div class="voice-ai-controls">
+        <button type="button" class="btn-voice-mic-main" id="btn-voice-mic-main" onclick="toggleSpeechRecognition()" aria-label="Toggle Microphone">
+          <svg class="mic-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </button>
+        
+        <form class="voice-text-fallback-form" id="voice-text-fallback-form" onsubmit="handleVoiceTextSubmit(event)">
+          <input type="text" id="voice-text-fallback-input" placeholder="Or type your food command here..." autocomplete="off">
+          <button type="submit" class="btn-voice-send" title="Send text command">➔</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Notification Toast Box -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Off-Screen Printable Invoice Container -->
+  <div id="print-container" class="printable-slip" style="display:none;"></div>
+
+  <!-- Main JavaScript App Logic -->
+  <script src="app.js"></script>
+  <!-- AI Voice Assistant, NLP Models & Machine Learning (ML) Engine -->
+  <script src="voice-nlp-ml.js"></script>
+</body>
+</html>

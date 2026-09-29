@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Track Your Order | Chinnodu Foods - Live Dispatch &amp; Courier Tracking</title>
+  <meta name="description" content="Track your Chinnodu Foods order live. Check real-time cloud kitchen preparation status, DTDC / Delhivery courier consignment tracking, and download tax invoices.">
+  <meta name="keywords" content="Track Chinnodu Foods Order, Live Food Delivery Tracking, Courier Tracking, DTDC Tracking, Delhivery Tracking">
+  <link rel="canonical" href="https://chinnodufoods.com/track.html">
+  <link rel="icon" type="image/jpeg" href="assets/images/brand-logo.jpg">
+
+  <!-- Google Fonts: Playfair Display & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="announcement-bar" id="announcement-bar">
+    <div class="ticker-track">
+      <div class="ticker-content">
+        <span>🚚 <strong>FREE DELIVERY</strong> on orders above ₹999</span>
+        <span>✦ 100% Wood-Pressed Pure Oils</span>
+        <span>✦ Stone-Ground Masalas &amp; Secret Homemade Recipes</span>
+        <span>✦ Zero Artificial Preservatives &amp; Colors</span>
+        <span>📦 Pan-India &amp; Express USA/Global Shipping</span>
+        <span>🌶️ Fresh Batches Prepared Daily</span>
+      </div>
+      <div class="ticker-content" aria-hidden="true">
+        <span>🚚 <strong>FREE DELIVERY</strong> on orders above ₹999</span>
+        <span>✦ 100% Wood-Pressed Pure Oils</span>
+        <span>✦ Stone-Ground Masalas &amp; Secret Homemade Recipes</span>
+        <span>✦ Zero Artificial Preservatives &amp; Colors</span>
+        <span>📦 Pan-India &amp; Express USA/Global Shipping</span>
+        <span>🌶️ Fresh Batches Prepared Daily</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Header -->
+  <header class="site-header" id="site-header">
+    <div class="container header-container">
+      <a href="index.html" class="brand-logo" id="brand-logo-link">
+        <div class="logo-emblem">
+          <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+        </div>
+        <div class="brand-text">
+          <span class="brand-main">Chinnodu Foods</span>
+          <span class="brand-tagline">chinnodufoods.com • Home of Traditional Items</span>
+        </div>
+      </a>
+
+      <div class="header-actions">
+        <a href="index.html" class="nav-item" style="color:var(--text-main); font-weight:600; font-size:0.9rem;">🏠 Home</a>
+        <a href="index.html#menu-catalog" class="nav-item" style="color:var(--text-main); font-weight:600; font-size:0.9rem;">🍱 Delicacies</a>
+        <a href="track.html" class="nav-item nav-track-pill" style="background:var(--accent-gold); color:#FFFFFF;" title="Check live order dispatch &amp; courier tracking">📍 Track Order</a>
+        <a href="contact.html" class="nav-item" style="color:var(--text-main); font-weight:600; font-size:0.9rem;">📞 Contact Us</a>
+        <a href="https://wa.me/919676698427?text=Namaste%20Chinnodu%20Foods!%20Help%20me%20track%20my%20order" target="_blank" rel="noopener noreferrer" class="btn-wa-gold" style="font-size:0.85rem; padding:8px 14px; text-decoration:none;">
+          <span>💬 WhatsApp</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Subpage Hero -->
+  <section class="subpage-hero">
+    <div class="subpage-hero-container">
+      <span class="subpage-badge">📍 Real-Time Tracking</span>
+      <h1 class="subpage-title">Track Your Shipment</h1>
+      <p class="subpage-subtitle">
+        Follow your freshly prepared delicacies from our traditional village kitchens to your doorstep with live courier updates.
+      </p>
+      <div class="subpage-breadcrumb">
+        <a href="index.html">Home</a>
+        <span>&rsaquo;</span>
+        <span>Order Tracking</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Standalone Tracking Body -->
+  <main class="track-page-wrapper">
+    <div class="track-page-container">
+      
+      <!-- Elevated Search Card -->
+      <div class="track-hero-search-card">
+        <div class="track-search-header">
+          <h2>Enter Your Order ID or Registered Mobile</h2>
+          <p>Search by Order ID (e.g. <strong>CF-84291</strong>) or your 10-digit mobile number used during checkout.</p>
+        </div>
+
+        <form id="standalone-track-form" onsubmit="handleStandaloneTrackSubmit(event)" class="track-search-box-standalone">
+          <div class="track-input-standalone-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="standalone-track-input" class="track-input-standalone" placeholder="Enter Order ID (e.g. CF-84291) or 10-digit Mobile..." autofocus required autocomplete="off">
+          </div>
+          <button type="submit" class="btn-track-standalone" id="btn-search-tracking">
+            <span>Track Order 🔍</span>
+          </button>
+        </form>
+
+        <div class="track-hint-row">
+          <span>💡 <strong>Tip:</strong> Your Order ID is shown on your payment confirmation screen and WhatsApp message.</span>
+          <span id="recent-orders-link-box"></span>
+        </div>
+      </div>
+
+      <!-- Live Tracking Result Container -->
+      <div id="standalone-track-result" class="track-result-wrapper">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Helpful Tracking FAQ -->
+      <div class="legal-main-card" style="margin-top:36px; padding:32px;">
+        <h3 style="font-family:var(--font-heading); color:var(--primary-maroon); font-size:1.35rem; margin-bottom:16px;">
+          Frequently Asked Questions About Delivery
+        </h3>
+        
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <h4 style="font-size:1rem; color:var(--text-main); font-weight:700; margin-bottom:4px;">
+              ⏱️ When is my courier tracking ID generated?
+            </h4>
+            <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5; margin:0;">
+              Because our sweets and pickles are prepared fresh daily, cooking and aroma-sealing takes 12 to 24 hours. Your DTDC or Delhivery tracking consignment number is activated as soon as the courier pickup scan is completed.
+            </p>
+          </div>
+
+          <div>
+            <h4 style="font-size:1rem; color:var(--text-main); font-weight:700; margin-bottom:4px;">
+              📦 How long will delivery take to my city?
+            </h4>
+            <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5; margin:0;">
+              Deliveries within Andhra Pradesh &amp; Telangana arrive within 2 to 3 days. South India takes 3 to 4 days, while Mumbai, Delhi NCR, and other states take 4 to 6 days via express air courier.
+            </p>
+          </div>
+
+          <div>
+            <h4 style="font-size:1rem; color:var(--text-main); font-weight:700; margin-bottom:4px;">
+              🧾 Can I download my GST Tax Invoice?
+            </h4>
+            <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5; margin:0;">
+              Yes! Click the green <strong>&ldquo;Print / Download Tax Invoice (PDF)&rdquo;</strong> button that appears above once your order is displayed to immediately save or print your official invoice.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Printable Invoice Container (Off-Screen) -->
+  <div id="print-container" class="printable-slip" style="display:none;"></div>
+
+  <!-- Toast Box -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      
+      <!-- Footer Col 1: Brand Info -->
+      <div class="footer-col brand-col">
+        <div class="footer-logo">
+          <div class="logo-emblem">
+            <img src="assets/images/brand-logo.jpg" alt="Chinnodu Foods Logo" class="brand-logo-img">
+          </div>
+          <span class="footer-brand-title">Chinnodu Foods</span>
+        </div>
+        <p class="footer-tagline">chinnodufoods.com • Home of Traditional Items • 100% Homemade Pure Goodness</p>
+        <div class="fssai-pill">
+          <span class="fssai-icon">🥗</span>
+          <span>FSSAI Certified Cloud Kitchen</span>
+        </div>
+      </div>
+
+      <!-- Footer Col 2: Categories -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Menu Categories</h4>
+        <ul class="footer-links">
+          <li><a href="index.html#menu-catalog">Traditional Sweets (Sunnunda, Arisalu)</a></li>
+          <li><a href="index.html#menu-catalog">Crispy Savouries (Chegodilu, Chekkalu)</a></li>
+          <li><a href="index.html#menu-catalog">Homemade Pickles (Avakaya, Gongura)</a></li>
+          <li><a href="index.html#menu-catalog">Authentic Thandra (Mango, Tati)</a></li>
+          <li><a href="index.html#menu-catalog">View All 25 Delicacies</a></li>
+        </ul>
+      </div>
+
+      <!-- Footer Col 3: Policies & Legal -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Policies &amp; Legal</h4>
+        <ul class="footer-links">
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+          <li><a href="shipping-policy.html">Shipping &amp; Delivery</a></li>
+          <li><a href="refund-policy.html">Cancellation &amp; Refund</a></li>
+          <li><a href="contact.html">Contact &amp; Grievance Redressal</a></li>
+          <li><a href="track.html" style="color:var(--accent-gold); font-weight:700;">📍 Dedicated Order Tracking</a></li>
+        </ul>
+      </div>
+
+      <!-- Footer Col 4: Contact & Hours -->
+      <div class="footer-col contact-col">
+        <h4 class="footer-heading">Contact &amp; Support</h4>
+        <ul class="footer-contact-list">
+          <li>
+            <span class="icon">📞</span>
+            <span>+91 96766 98427 / +91 73829 14229</span>
+          </li>
+          <li>
+            <span class="icon">✉️</span>
+            <span>orders@chinnodufoods.com</span>
+          </li>
+          <li>
+            <span class="icon">📍</span>
+            <span>Chinnodu Foods Cloud Kitchen • Express Pan-India Delivery</span>
+          </li>
+          <li>
+            <span class="icon">⏰</span>
+            <span>Monday – Sunday: 9:00 AM – 9:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Footer Bottom Strip -->
+    <div class="footer-bottom">
+      <div class="container footer-bottom-container">
+        <p>© 2026 Chinnodu Foods. All rights reserved. Handcrafted with love. • <a href="admin.html" style="color:inherit; text-decoration:none; opacity:0.8;">Admin Portal</a></p>
+        <div class="payment-icons-strip">
+          <span class="pay-badge">Google Pay</span>
+          <span class="pay-badge">PhonePe</span>
+          <span class="pay-badge">Paytm</span>
+          <span class="pay-badge">UPI (BHIM)</span>
+          <span class="pay-badge" style="background:#059669; color:#fff; font-weight:700;">100% Secure Prepaid</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Dedicated Tracking Logic -->
+  <script src="track.js"></script>
+</body>
+</html>
