@@ -4195,20 +4195,26 @@
     document.addEventListener("DOMContentLoaded", async () => {
       setupOtpInputHandlers();
 
-      // Detect if viewing via file:/// protocol
-      const isFileProtocol = window.location.protocol === "file:";
+      // Detect if viewing via file:/// protocol or static host (GitHub Pages)
+      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io");
       const fileBanner = document.getElementById("file-protocol-banner");
       if (fileBanner) {
-        fileBanner.style.display = isFileProtocol ? "block" : "none";
+        fileBanner.style.display = isStaticHost ? "block" : "none";
+        if (window.location.hostname.includes("github.io")) {
+          const badge = fileBanner.querySelector(".banner-badge");
+          if (badge) badge.textContent = "GITHUB PAGES LIVE";
+          const desc = fileBanner.querySelector(".banner-desc");
+          if (desc) desc.textContent = "Running live on GitHub Pages. Owner authentication is enabled.";
+        }
       }
 
-      // If in local file preview mode and already logged in during this session
-      if (isFileProtocol && sessionStorage.getItem("chinnodu_offline_admin") === "true") {
+      // If in local file preview mode or GitHub Pages and already logged in during this session
+      if (isStaticHost && sessionStorage.getItem("chinnodu_offline_admin") === "true") {
         showDashboard();
         return;
       }
 
-      if (!isFileProtocol) {
+      if (!isStaticHost) {
         try {
           const authRes = await fetch("/api/admin/check-auth", { credentials: "include" });
           if (authRes.ok) {
@@ -4280,8 +4286,9 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = "<span>Checking Credentials...</span>";
 
-      // If user opened file:/// directly, authenticate locally without failing on network fetch
-      if (window.location.protocol === "file:") {
+      // If user opened file:/// or is running on GitHub Pages, authenticate directly without failing on network fetch
+      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io");
+      if (isStaticHost) {
         const u = username.toLowerCase();
         const p = password;
         const validUsers = ["admin", "somesh", "someshadigarla", "someshadigarla@gmail.com", "9676698427"];
@@ -4291,7 +4298,7 @@
 
         if (isUserValid && isPassValid) {
           sessionStorage.setItem("chinnodu_offline_admin", "true");
-          showToast("🎉 Welcome Somesh Garu! Access granted (Offline Preview Mode).");
+          showToast("🎉 Welcome Somesh Garu! Access granted (GitHub Pages Live Mode).");
           showDashboard();
         } else {
           showToast("❌ Invalid credentials. Try 'admin' / 'Somesh@96766' or click Auto-fill.");
@@ -4360,6 +4367,19 @@
           document.getElementById("admin-password-input").focus();
         }
       } catch (err) {
+        // Fallback for static servers or when network is down
+        const u = username.toLowerCase();
+        const p = password;
+        const validUsers = ["admin", "somesh", "someshadigarla", "someshadigarla@gmail.com", "9676698427"];
+        const cleanDigits = u.replace(/\D/g, "");
+        const isUserValid = validUsers.includes(u) || (cleanDigits.length >= 10 && cleanDigits.slice(-10) === "9676698427");
+        const isPassValid = (p === "Somesh@96766" || p.toLowerCase() === "somesh@96766" || p === "admin" || p === "9676698427");
+        if (isUserValid && isPassValid) {
+          sessionStorage.setItem("chinnodu_offline_admin", "true");
+          showToast("🎉 Welcome Somesh Garu! Access granted.");
+          showDashboard();
+          return;
+        }
         showToast("❌ Could not connect to server. Ensure 'npm start' is running on http://localhost:8080.");
       } finally {
         submitBtn.disabled = false;
@@ -4709,11 +4729,15 @@
       document.getElementById("admin-dashboard-screen").style.display = "block";
       document.getElementById("admin-nav-actions").style.display = "flex";
 
-      // If in local file preview mode, show top notification banner
-      const isFileProtocol = window.location.protocol === "file:" || sessionStorage.getItem("chinnodu_offline_admin") === "true";
+      // If in local file preview mode or GitHub Pages, show top notification banner
+      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io") || sessionStorage.getItem("chinnodu_offline_admin") === "true";
       const offNotice = document.getElementById("dashboard-offline-notice");
       if (offNotice) {
-        offNotice.style.display = isFileProtocol ? "block" : "none";
+        offNotice.style.display = isStaticHost ? "block" : "none";
+        if (window.location.hostname.includes("github.io")) {
+          const t = offNotice.querySelector("strong");
+          if (t) t.textContent = "GitHub Pages Live Mode:";
+        }
       }
 
       fetchOrders();
@@ -4838,17 +4862,26 @@
           date: CURRENT_DATE_FILTER
         });
 
-        const res = await fetch(`/api/orders?${queryParams.toString()}`, { credentials: "include" });
-        if (res.status === 401) {
+        let res;
+        try {
+          res = await fetch(`/api/orders?${queryParams.toString()}`, { credentials: "include" });
+        } catch (netErr) {
+          try { res = await fetch("orders.json"); } catch (e) {}
+        }
+        if (!res || !res.ok) {
+          try { res = await fetch("orders.json"); } catch (e) {}
+        }
+        if (res && res.status === 401) {
           showToast("Session expired. Please log in.");
           window.location.reload();
           return;
         }
-        if (res.ok) {
+        if (res && res.ok) {
           const data = await res.json();
-          if (data.success && Array.isArray(data.orders)) {
-            ALL_ORDERS = data.orders;
-            TOTAL_ORDERS = Number(data.total) || data.orders.length;
+          const ordersList = Array.isArray(data) ? data : (data.orders || []);
+          if (ordersList.length > 0) {
+            ALL_ORDERS = ordersList;
+            TOTAL_ORDERS = Number(data.total) || ordersList.length;
             TOTAL_PAGES = Number(data.totalPages) || 1;
             CURRENT_PAGE = Number(data.page) || 1;
 
@@ -7881,20 +7914,37 @@
     // =========================================================================
     async function fetchFinanceData() {
       try {
-        const [sumRes, txnRes] = await Promise.all([
-          fetch("/api/finance/summary", { credentials: "include" }),
-          fetch("/api/finance/transactions", { credentials: "include" })
-        ]);
+        let sumData, txnData;
+        try {
+          const [sumRes, txnRes] = await Promise.all([
+            fetch("/api/finance/summary", { credentials: "include" }),
+            fetch("/api/finance/transactions", { credentials: "include" })
+          ]);
 
-        if (sumRes.status === 401 || txnRes.status === 401) {
-          showToast("Session expired. Please log in.");
-          window.location.reload();
-          return;
+          if (sumRes.status === 401 || txnRes.status === 401) {
+            showToast("Session expired. Please log in.");
+            window.location.reload();
+            return;
+          }
+
+          if (sumRes.ok && txnRes.ok) {
+            sumData = await sumRes.json();
+            txnData = await txnRes.json();
+          }
+        } catch (netErr) {}
+
+        if (!sumData || !txnData) {
+          try {
+            const accRes = await fetch("accounts.json");
+            if (accRes.ok) {
+              const accJson = await accRes.json();
+              sumData = { summary: { accounts: accJson.accounts || [] } };
+              txnData = { transactions: accJson.transactions || [] };
+            }
+          } catch (e) {}
         }
 
-        if (sumRes.ok && txnRes.ok) {
-          const sumData = await sumRes.json();
-          const txnData = await txnRes.json();
+        if (sumData && txnData) {
           FINANCE_DATA.summary = sumData.summary || {};
           FINANCE_DATA.accounts = sumData.summary?.accounts || [];
           FINANCE_DATA.transactions = txnData.transactions || [];
@@ -8191,13 +8241,29 @@
         `;
       }
       try {
-        const res = await fetch("/api/products", { credentials: "include" });
-        if (res.ok) {
+        let res;
+        try {
+          res = await fetch("/api/products", { credentials: "include" });
+        } catch (netErr) {
+          try { res = await fetch("products.json"); } catch (e) {}
+        }
+        if (!res || !res.ok) {
+          try { res = await fetch("products.json"); } catch (e) {}
+        }
+        if (res && res.ok) {
           const data = await res.json();
-          if (data.success && Array.isArray(data.products)) {
-            ALL_PRODUCTS = data.products;
+          const prodList = Array.isArray(data) ? data : (data.products || []);
+          if (prodList.length > 0) {
+            ALL_PRODUCTS = prodList;
             if (data.stats) {
               updateProductsStats(data.stats);
+            } else {
+              updateProductsStats({
+                total: prodList.length,
+                inStock: prodList.filter(p => p.inStock !== false).length,
+                outOfStock: prodList.filter(p => p.inStock === false).length,
+                categoriesCount: new Set(prodList.map(p => p.category)).size
+              });
             }
           }
         }

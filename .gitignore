@@ -15,3 +15,6 @@ Thumbs.db
 cloudflared.exe
 *.zip
 
+# Local backups & runtime sessions
+backups/
+otps.json
