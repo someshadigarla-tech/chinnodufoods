@@ -3948,6 +3948,36 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
+    // =============================================================================
+    // Universal Cloud Backend Routing & Cross-Origin Admin Authentication
+    // =============================================================================
+    const BACKEND_URL = "https://chinnodufoods.onrender.com";
+    const API_BASE = (window.location.hostname.includes("github.io") || window.location.protocol === "file:")
+      ? BACKEND_URL
+      : "";
+
+    function getAdminAuthHeaders(customHeaders = {}) {
+      const token = localStorage.getItem("admin_session_token");
+      const headers = { ...customHeaders };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    // Intercept native fetch: route /api/... to Render when on GitHub Pages or file preview, and inject auth token
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      let finalUrl = url;
+      if (typeof url === "string" && url.startsWith("/api/")) {
+        finalUrl = `${API_BASE}${url}`;
+      }
+      options = options || {};
+      options.credentials = options.credentials || "include";
+      options.headers = getAdminAuthHeaders(options.headers || {});
+      return _originalFetch.call(this, finalUrl, options);
+    };
+
     // HTML Sanitizer Helper
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -4133,31 +4163,24 @@
     document.addEventListener("DOMContentLoaded", async () => {
       setupOtpInputHandlers();
 
-      // Detect if viewing via file:/// protocol, static host (GitHub Pages / custom domain)
-      const isStaticHost = window.location.protocol === "file:" || 
-                           window.location.hostname.includes("github.io") || 
-                           window.location.hostname.includes("chinnodufoods") ||
-                           (!window.location.port && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
-
-      // If in local file preview mode or static live host and already logged in during this session
-      if (isStaticHost && sessionStorage.getItem("chinnodu_offline_admin") === "true") {
-        showDashboard();
-        return;
+      // Check auth against live backend (via session cookie or token)
+      try {
+        const authRes = await fetch("/api/admin/check-auth");
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          if (authData.authenticated) {
+            showDashboard();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Live session check notice:", err);
       }
 
-      if (!isStaticHost) {
-        try {
-          const authRes = await fetch("/api/admin/check-auth", { credentials: "include" });
-          if (authRes.ok) {
-            const authData = await authRes.json();
-            if (authData.authenticated) {
-              showDashboard();
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn("Session check fallback:", err);
-        }
+      // Offline session fallback if backend was unreachable
+      if (sessionStorage.getItem("chinnodu_offline_admin") === "true") {
+        showDashboard();
+        return;
       }
 
       // If not authenticated, clear input fields and active session
@@ -4257,6 +4280,9 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          if (data.token) {
+            localStorage.setItem("admin_session_token", data.token);
+          }
           if (data.authenticated) {
             showToast("🎉 Welcome Somesh Garu! Access granted.");
             showDashboard();
@@ -4376,6 +4402,9 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          if (data.token) {
+            localStorage.setItem("admin_session_token", data.token);
+          }
           if (RESEND_TIMER_INTERVAL) clearInterval(RESEND_TIMER_INTERVAL);
           if (OTP_EXPIRY_INTERVAL) clearInterval(OTP_EXPIRY_INTERVAL);
           sessionStorage.removeItem("admin_otp_session_id");
@@ -4652,6 +4681,7 @@
       try {
         sessionStorage.removeItem("admin_otp_session_id");
         sessionStorage.removeItem("chinnodu_offline_admin");
+        localStorage.removeItem("admin_session_token");
         await fetch("/api/admin/logout", {
           method: "POST",
           credentials: "include"

@@ -433,9 +433,17 @@ const server = http.createServer(async (req, res) => {
     res.end();
     return;
   }
-  if (pathname === '/track' || pathname === '/track/') {
-    res.writeHead(302, { 'Location': '/track.html' });
-    res.end();
+  // Health & Monitoring Endpoint
+  if (pathname === '/api/health' || pathname === '/api/ping') {
+    sendJsonResponse(req, res, 200, {
+      status: 'healthy',
+      service: 'Chinnodu Foods API',
+      mongo: mongoManager.isConnected ? 'connected' : 'connecting_or_local',
+      productsCount: productsDb.productsList.length,
+      ordersCount: orderDb.ordersList.length,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
     return;
   }
 
@@ -499,17 +507,20 @@ const server = http.createServer(async (req, res) => {
       // 4. Issue authenticated 24-hour admin session cookie directly
       const token = createSession(username);
       const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
-      const secureFlag = isHttps ? '; Secure' : '';
+      const cookieHeader = isHttps 
+        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
+        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
 
       console.log(`[AUTH] Admin signed in successfully: ${username}`);
 
       res.writeHead(200, {
         'Content-Type': 'application/json',
-        'Set-Cookie': `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400${secureFlag}`
+        'Set-Cookie': cookieHeader
       });
       res.end(JSON.stringify({
         success: true,
         authenticated: true,
+        token,
         username,
         name: 'Somesh Adigarla',
         message: 'Admin access granted successfully!'
@@ -646,12 +657,14 @@ const server = http.createServer(async (req, res) => {
       // 4. Create permanent authenticated server session
       const token = createSession(sessionData.targetEmail || ADMIN_EMAIL);
 
-      // 5. Set secure HttpOnly cookie (adds Secure flag on HTTPS)
+      // 5. Set secure HttpOnly cookie (adds Secure & SameSite=None on HTTPS for cross-origin admin)
       const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
-      const secureFlag = isHttps ? '; Secure' : '';
+      const cookieHeader = isHttps 
+        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
+        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
       res.writeHead(200, {
         'Content-Type': 'application/json',
-        'Set-Cookie': `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400${secureFlag}`
+        'Set-Cookie': cookieHeader
       });
       res.end(JSON.stringify({ 
         success: true, 
@@ -1361,11 +1374,21 @@ const server = http.createServer(async (req, res) => {
       const fullPath = path.join(imagesDir, targetFilename);
       fs.writeFileSync(fullPath, buffer);
 
+      // Persist to MongoDB for cloud persistence across Render restarts
+      if (mongoManager.saveImage) {
+        mongoManager.saveImage(targetFilename, buffer, `image/${ext}`);
+      }
+
       console.log(`[4K PHOTO UPLOAD] Saved ${targetFilename} (${(buffer.length / 1024 / 1024).toFixed(2)} MB) to assets/images/`);
+
+      const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+      const isCloud = host.includes('render.com') || Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+      const urlPrefix = isCloud ? 'https://chinnodufoods.onrender.com/' : '';
 
       sendJsonResponse(req, res, 200, {
         success: true,
-        url: `assets/images/${targetFilename}`,
+        url: `${urlPrefix}assets/images/${targetFilename}`,
+        relativeUrl: `assets/images/${targetFilename}`,
         filename: targetFilename,
         sizeBytes: buffer.length,
         sizeFormatted: `${(buffer.length / 1024 / 1024).toFixed(2)} MB`
@@ -1592,8 +1615,30 @@ const server = http.createServer(async (req, res) => {
   const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
   const filePath = path.join(__dirname, safePath);
 
-  fs.stat(filePath, (err, stats) => {
+  fs.stat(filePath, async (err, stats) => {
     if (err || !stats.isFile()) {
+      // Check if requested image is saved in MongoDB
+      if (pathname.startsWith('/assets/images/') && mongoManager.getImage) {
+        try {
+          const imgFilename = path.basename(pathname);
+          const dbImg = await mongoManager.getImage(imgFilename);
+          if (dbImg && dbImg.buffer) {
+            try {
+              if (!fs.existsSync(path.dirname(filePath))) {
+                fs.mkdirSync(path.dirname(filePath), { recursive: true });
+              }
+              fs.writeFileSync(filePath, dbImg.buffer);
+            } catch(e) {}
+            res.writeHead(200, {
+              'Content-Type': dbImg.contentType || 'image/jpeg',
+              'Content-Length': dbImg.buffer.length,
+              'Cache-Control': 'public, max-age=86400'
+            });
+            res.end(dbImg.buffer);
+            return;
+          }
+        } catch (e) {}
+      }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found');
       return;

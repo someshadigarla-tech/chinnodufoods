@@ -4,6 +4,14 @@
  */
 
 // =============================================================================
+// Universal Cloud API Base URL (Routes GitHub Pages/file to Render MongoDB backend)
+// =============================================================================
+const BACKEND_URL = "https://chinnodufoods.onrender.com";
+const API_BASE = (window.location.hostname.includes("github.io") || window.location.protocol === "file:")
+  ? BACKEND_URL
+  : "";
+
+// =============================================================================
 // Chinnodu Foods Official Menu Dataset (Live Catalog with local fallback)
 // =============================================================================
 let PRODUCTS_DATABASE = [
@@ -581,14 +589,19 @@ async function loadStorefrontProducts() {
   try {
     let prods = null;
     try {
-      const res = await fetch("/api/products");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${API_BASE}/api/products`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
           prods = data.products;
         }
       }
-    } catch (apiErr) {}
+    } catch (apiErr) {
+      console.warn("Live API fetch notice (Render sleeping or offline):", apiErr.message);
+    }
 
     // Fallback: load products.json directly on static hosts like GitHub Pages
     if (!prods) {
@@ -630,7 +643,7 @@ async function loadStorefrontProducts() {
 // Dynamic backend heritage content & category cards sync
 async function loadHeritageContent() {
   try {
-    const res = await fetch("/api/heritage");
+    const res = await fetch(`${API_BASE}/api/heritage`);
     if (!res.ok) return;
     const data = await res.json();
     if (!data.success || !data.heritage) return;
@@ -1702,8 +1715,8 @@ function handleCheckoutSubmit(e) {
     }
   };
 
-  // 1. Save to server API
-  fetch("/api/orders", {
+  // 1. Save to server API (Render cloud MongoDB)
+  fetch(`${API_BASE}/api/orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(orderData)
@@ -1991,7 +2004,7 @@ async function trackOrderLookup(query) {
 
   // Try API first
   try {
-    const res = await fetch(`/api/track?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${API_BASE}/api/track?q=${encodeURIComponent(query)}`);
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.orders)) {
@@ -2208,7 +2221,7 @@ async function printCustomerInvoice(orderId) {
   // 2. Fallback to API if not in local storage
   if (!order) {
     try {
-      const res = await fetch(`/api/track?q=${encodeURIComponent(orderId)}`);
+      const res = await fetch(`${API_BASE}/api/track?q=${encodeURIComponent(orderId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {

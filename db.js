@@ -56,7 +56,8 @@ class MongoManager {
       accounts: null,
       transactions: null,
       heritage: null,
-      sessions: null
+      sessions: null,
+      images: null
     };
   }
 
@@ -103,6 +104,7 @@ class MongoManager {
       this.collections.transactions = this.db.collection('transactions');
       this.collections.heritage = this.db.collection('heritage');
       this.collections.sessions = this.db.collection('sessions');
+      this.collections.images = this.db.collection('images');
 
       console.log(`[DB MONGODB] ✅ Successfully connected to MongoDB database "${this.dbName}"!`);
 
@@ -310,6 +312,34 @@ class MongoManager {
       const doc = await this.collections.heritage.findOne({ key: 'cms_master' });
       return doc?.data || null;
     } catch (err) {
+      return null;
+    }
+  }
+
+  // 4K Photo Image Storage in MongoDB (Preserves uploaded photos across cloud restarts)
+  async saveImage(filename, buffer, contentType = 'image/jpeg') {
+    if (!this.isConnected || !this.collections.images) return;
+    try {
+      await this.collections.images.updateOne(
+        { _id: filename },
+        { $set: { _id: filename, data: buffer.toString('base64'), contentType, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error('[DB IMAGE SAVE ERROR]', e.message);
+    }
+  }
+
+  async getImage(filename) {
+    if (!this.isConnected || !this.collections.images) return null;
+    try {
+      const doc = await this.collections.images.findOne({ _id: filename });
+      if (!doc || !doc.data) return null;
+      return {
+        buffer: Buffer.from(doc.data, 'base64'),
+        contentType: doc.contentType || 'image/jpeg'
+      };
+    } catch (e) {
       return null;
     }
   }
