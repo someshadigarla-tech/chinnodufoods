@@ -25,7 +25,7 @@ if errorlevel 1 (
     echo  2. Copy the one-time code shown below and paste it in browser.
     echo --------------------------------------------------------
     echo.
-    gh auth login --web -h github.com -p https --scopes "repo"
+    gh auth login --web -h github.com -p https --scopes "repo,workflow"
     gh auth setup-git
 )
 
