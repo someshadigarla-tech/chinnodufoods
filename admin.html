@@ -2334,24 +2334,6 @@
   <!-- MAIN ADMIN DASHBOARD -->
   <main class="admin-main" id="admin-dashboard-screen" style="display: none;">
     
-    <!-- OFFLINE / FILE PROTOCOL NOTICE BANNER -->
-    <div id="dashboard-offline-notice" style="display:none; background:#FFFBEB; border:1.5px solid #F59E0B; border-radius:12px; padding:12px 18px; margin-bottom:1.5rem; text-align:left; color:#92400E;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.3rem;">ℹ️</span>
-          <div>
-            <strong style="color:#B45309;">Offline Demo Mode (file:/// protocol)</strong>
-            <div style="font-size:0.83rem; color:#78350F; margin-top:2px;">
-              You are previewing the local store dataset. To edit live orders and sync with MongoDB, start the server (<code style="background:#FEF3C7; padding:2px 6px; border-radius:4px; font-weight:700;">npm start</code>) and visit <strong>http://localhost:8080/admin.html</strong>.
-            </div>
-          </div>
-        </div>
-        <a href="http://localhost:8080/admin.html" style="background:#D97706; color:#fff; text-decoration:none; font-weight:700; font-size:0.82rem; padding:8px 16px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
-          🚀 Open Live Server Portal
-        </a>
-      </div>
-    </div>
-    
     <!-- TOP NAVIGATION VIEW SWITCHER: ORDERS vs MONEY IN ACCOUNTS -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
       <div class="view-switcher-bar">
@@ -4680,17 +4662,6 @@
       document.getElementById("admin-login-screen").style.display = "none";
       document.getElementById("admin-dashboard-screen").style.display = "block";
       document.getElementById("admin-nav-actions").style.display = "flex";
-
-      // If in local file preview mode or GitHub Pages, show top notification banner
-      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io") || sessionStorage.getItem("chinnodu_offline_admin") === "true";
-      const offNotice = document.getElementById("dashboard-offline-notice");
-      if (offNotice) {
-        offNotice.style.display = isStaticHost ? "block" : "none";
-        if (window.location.hostname.includes("github.io")) {
-          const t = offNotice.querySelector("strong");
-          if (t) t.textContent = "GitHub Pages Live Mode:";
-        }
-      }
 
       fetchOrders();
       fetchFinanceData();
