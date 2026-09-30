@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found - Chinnodu Foods</title>
+  <script>
+    // Smart Single-Page & Clean URL Router for GitHub Pages
+    (function() {
+      var path = window.location.pathname.toLowerCase();
+      var basePath = path.indexOf('/chinnodufoods') === 0 ? '/chinnodufoods' : '';
+
+      if (path.indexOf('admin') !== -1) {
+        window.location.replace(basePath + '/admin.html' + window.location.hash + window.location.search);
+        return;
+      }
+      if (path.indexOf('login') !== -1) {
+        window.location.replace(basePath + '/admin.html' + window.location.hash + window.location.search);
+        return;
+      }
+      if (path.indexOf('track') !== -1) {
+        window.location.replace(basePath + '/track.html' + window.location.hash + window.location.search);
+        return;
+      }
+      if (path.indexOf('contact') !== -1) {
+        window.location.replace(basePath + '/contact.html');
+        return;
+      }
+      if (path.indexOf('privacy') !== -1) {
+        window.location.replace(basePath + '/privacy-policy.html');
+        return;
+      }
+      if (path.indexOf('terms') !== -1) {
+        window.location.replace(basePath + '/terms-conditions.html');
+        return;
+      }
+      if (path.indexOf('refund') !== -1) {
+        window.location.replace(basePath + '/refund-policy.html');
+        return;
+      }
+      if (path.indexOf('shipping') !== -1) {
+        window.location.replace(basePath + '/shipping-policy.html');
+        return;
+      }
+    })();
+  </script>
+  <style>
+    :root {
+      --primary: #6B1426;
+      --gold: #D97706;
+      --dark: #111827;
+      --card-bg: #1F2937;
+      --text: #F9FAFB;
+      --muted: #9CA3AF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 520px;
+      background: var(--card-bg);
+      border: 1px solid #374151;
+      border-radius: 20px;
+      padding: 40px 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(217, 119, 6, 0.15);
+      color: var(--gold);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    p {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #6B1426, #8B1A32);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(107, 20, 38, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(107, 20, 38, 0.6);
+    }
+    .btn-secondary {
+      background: #374151;
+      color: #F3F4F6;
+    }
+    .btn-secondary:hover {
+      background: #4B5563;
+      transform: translateY(-2px);
+    }
+    .btn-admin {
+      background: rgba(217, 119, 6, 0.2);
+      color: #FBBF24;
+      border: 1px solid rgba(217, 119, 6, 0.4);
+    }
+    .btn-admin:hover {
+      background: rgba(217, 119, 6, 0.35);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">CHINNODU FOODS</div>
+    <h1>Looking for Something?</h1>
+    <p>We couldn't find the exact page you requested, but you can jump straight to our authentic store or access the Store Admin Portal below.</p>
+    <div class="btn-group">
+      <a href="index.html" class="btn btn-primary">🏠 Return to Store</a>
+      <a href="admin.html" class="btn btn-admin">🛡️ Admin Portal</a>
+      <a href="track.html" class="btn btn-secondary">📍 Track Order</a>
+    </div>
+  </div>
+</body>
+</html>

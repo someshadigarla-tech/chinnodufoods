@@ -4195,20 +4195,23 @@
     document.addEventListener("DOMContentLoaded", async () => {
       setupOtpInputHandlers();
 
-      // Detect if viewing via file:/// protocol or static host (GitHub Pages)
-      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io");
+      // Detect if viewing via file:/// protocol, static host (GitHub Pages / custom domain)
+      const isStaticHost = window.location.protocol === "file:" || 
+                           window.location.hostname.includes("github.io") || 
+                           window.location.hostname.includes("chinnodufoods") ||
+                           (!window.location.port && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
       const fileBanner = document.getElementById("file-protocol-banner");
       if (fileBanner) {
         fileBanner.style.display = isStaticHost ? "block" : "none";
-        if (window.location.hostname.includes("github.io")) {
+        if (window.location.hostname.includes("github.io") || window.location.hostname.includes("chinnodufoods")) {
           const badge = fileBanner.querySelector(".banner-badge");
-          if (badge) badge.textContent = "GITHUB PAGES LIVE";
+          if (badge) badge.textContent = "LIVE SECURE MODE";
           const desc = fileBanner.querySelector(".banner-desc");
-          if (desc) desc.textContent = "Running live on GitHub Pages. Owner authentication is enabled.";
+          if (desc) desc.textContent = "Running live. Owner authentication is enabled.";
         }
       }
 
-      // If in local file preview mode or GitHub Pages and already logged in during this session
+      // If in local file preview mode or static live host and already logged in during this session
       if (isStaticHost && sessionStorage.getItem("chinnodu_offline_admin") === "true") {
         showDashboard();
         return;
@@ -4286,8 +4289,11 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = "<span>Checking Credentials...</span>";
 
-      // If user opened file:/// or is running on GitHub Pages, authenticate directly without failing on network fetch
-      const isStaticHost = window.location.protocol === "file:" || window.location.hostname.includes("github.io");
+      // If user opened file:/// or is running on GitHub Pages / custom domain, authenticate directly
+      const isStaticHost = window.location.protocol === "file:" || 
+                           window.location.hostname.includes("github.io") || 
+                           window.location.hostname.includes("chinnodu") ||
+                           (!window.location.port && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
       if (isStaticHost) {
         const u = username.toLowerCase();
         const p = password;
@@ -4298,7 +4304,7 @@
 
         if (isUserValid && isPassValid) {
           sessionStorage.setItem("chinnodu_offline_admin", "true");
-          showToast("🎉 Welcome Somesh Garu! Access granted (GitHub Pages Live Mode).");
+          showToast("🎉 Welcome Somesh Garu! Access granted.");
           showDashboard();
         } else {
           showToast("❌ Invalid credentials. Try 'admin' / 'Somesh@96766' or click Auto-fill.");
@@ -4317,6 +4323,9 @@
           credentials: "include",
           body: JSON.stringify({ username, password })
         });
+        if (res.status === 404) {
+          throw new Error("API not present on static host");
+        }
         const data = await res.json();
 
         if (res.ok && data.success) {
@@ -4881,7 +4890,23 @@
           const ordersList = Array.isArray(data) ? data : (data.orders || []);
           if (ordersList.length > 0) {
             ALL_ORDERS = ordersList;
-            TOTAL_ORDERS = Number(data.total) || ordersList.length;
+
+            // Merge locally placed customer orders if present
+            try {
+              const localCache = localStorage.getItem("cf_orders_cache");
+              if (localCache) {
+                const locList = JSON.parse(localCache);
+                if (Array.isArray(locList)) {
+                  locList.forEach(lo => {
+                    if (!ALL_ORDERS.some(o => o.id === lo.id)) {
+                      ALL_ORDERS.unshift(lo);
+                    }
+                  });
+                }
+              }
+            } catch (e) {}
+
+            TOTAL_ORDERS = Number(data.total) || ALL_ORDERS.length;
             TOTAL_PAGES = Number(data.totalPages) || 1;
             CURRENT_PAGE = Number(data.page) || 1;
 

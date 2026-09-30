@@ -3851,6 +3851,26 @@ img {
   color: #fff !important;
 }
 
+.nav-admin-pill {
+  background: rgba(107, 20, 38, 0.08) !important;
+  color: var(--primary-maroon) !important;
+  font-weight: 700 !important;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px !important;
+  border: 1px solid rgba(107, 20, 38, 0.25);
+  transition: var(--transition-fast);
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-admin-pill:hover {
+  background: var(--primary-maroon) !important;
+  color: #fff !important;
+  border-color: var(--primary-maroon) !important;
+}
+
 .track-order-card {
   max-width: 620px;
   width: 100%;
