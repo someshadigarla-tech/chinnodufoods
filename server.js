@@ -439,6 +439,7 @@ const server = http.createServer(async (req, res) => {
       status: 'healthy',
       service: 'Chinnodu Foods API',
       mongo: mongoManager.isConnected ? 'connected' : 'connecting_or_local',
+      mongoError: mongoManager.connectionError || null,
       productsCount: productsDb.productsList.length,
       ordersCount: orderDb.ordersList.length,
       timestamp: new Date().toISOString(),
