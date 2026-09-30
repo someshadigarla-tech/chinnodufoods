@@ -2223,50 +2223,10 @@
       <h1 class="login-title">Admin Sign In</h1>
       <p class="login-desc">Sign in with your registered email or phone number to access store orders, courier tracking, and business finance ledger.</p>
 
-      <!-- FILE PROTOCOL BANNER (Auto-detected if opened directly from disk) -->
-      <div id="file-protocol-banner" style="display:none; background:#FFFBEB; border:1.5px solid #F59E0B; border-radius:12px; padding:12px 14px; margin:1rem 0; text-align:left; color:#92400E; font-size:0.84rem; line-height:1.45;">
-        <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#B45309; margin-bottom:4px;">
-          <span>⚠️</span>
-          <span>Viewing via Local File (file:///)</span>
-        </div>
-        <p style="margin:0 0 8px 0; font-size:0.82rem; color:#78350F;">
-          The Admin Portal connects with the Node.js backend server for live orders and MongoDB sync.
-        </p>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-          <a href="http://localhost:8080/admin.html" style="background:#D97706; color:#fff; text-decoration:none; font-weight:700; font-size:0.78rem; padding:6px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
-            🚀 Open http://localhost:8080/admin.html
-          </a>
-          <button type="button" onclick="loginOfflineDemoMode()" class="login-chip-btn" style="background:#FEF3C7; color:#92400E; border-color:#F59E0B; font-weight:700; font-size:0.78rem;">
-            ⚡ Continue in Offline Preview Mode
-          </button>
-        </div>
-        <div style="font-size:0.73rem; color:#92400E; opacity:0.9;">
-          💡 Tip: Run <code>npm start</code> in your terminal to start the live server.
-        </div>
-      </div>
-
-      <!-- QUICK FILL ADMIN CREDENTIALS CHIPS -->
-      <div style="margin: 1rem 0 0.75rem; text-align: left;">
-        <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.04em;">
-          ⚡ Quick Auto-Fill Credentials:
-        </span>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button type="button" class="login-chip-btn" onclick="quickFillAdmin('admin', 'Somesh@96766')">
-            👑 admin
-          </button>
-          <button type="button" class="login-chip-btn" onclick="quickFillAdmin('someshadigarla@gmail.com', 'Somesh@96766')">
-            📧 someshadigarla@gmail.com
-          </button>
-          <button type="button" class="login-chip-btn" onclick="quickFillAdmin('9676698427', 'Somesh@96766')">
-            📱 9676698427
-          </button>
-        </div>
-      </div>
-      
-      <form id="admin-login-form" onsubmit="handleAdminLogin(event)" style="margin-top:0.75rem;">
+      <form id="admin-login-form" onsubmit="handleAdminLogin(event)" style="margin-top:1.5rem;">
         <div style="margin-bottom:1.1rem; text-align:left;">
           <label style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Admin Email, Phone or Username</label>
-          <input type="text" id="admin-username-input" class="input-admin" style="width:100%; padding:0.75rem 1rem; font-size:0.95rem; box-sizing:border-box;" placeholder="Enter email or mobile number" required autocomplete="off" value="">
+          <input type="text" id="admin-username-input" class="input-admin" style="width:100%; padding:0.75rem 1rem; font-size:0.95rem; box-sizing:border-box;" placeholder="Enter email or mobile number" required autocomplete="username" value="">
         </div>
         <div style="margin-bottom:1.35rem; text-align:left;">
           <label for="admin-password-input" style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Password</label>
@@ -2284,13 +2244,6 @@
           <span>Sign In to Admin Portal ➡️</span>
         </button>
       </form>
-
-      <div style="margin-top:1.25rem; font-size:0.78rem; color:var(--text-muted); background:#FAF5F0; padding:10px 14px; border-radius:10px; border:1px solid var(--border-color); text-align:left; line-height:1.5;">
-        🔒 <strong>Authorized Store Owner Access:</strong><br>
-        • <strong>Allowed Users:</strong> <code>admin</code>, <code>someshadigarla@gmail.com</code>, <code>9676698427</code><br>
-        • <strong>Password:</strong> <code>Somesh@96766</code> (or <code>admin</code>)<br>
-        • <strong>Live Portal:</strong> <a href="http://localhost:8080/admin.html" style="color:var(--primary-maroon); font-weight:700;">http://localhost:8080/admin.html</a>
-      </div>
     </div>
 
     <!-- STEP 2: OTP VERIFICATION -->
@@ -4200,16 +4153,6 @@
                            window.location.hostname.includes("github.io") || 
                            window.location.hostname.includes("chinnodufoods") ||
                            (!window.location.port && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
-      const fileBanner = document.getElementById("file-protocol-banner");
-      if (fileBanner) {
-        fileBanner.style.display = isStaticHost ? "block" : "none";
-        if (window.location.hostname.includes("github.io") || window.location.hostname.includes("chinnodufoods")) {
-          const badge = fileBanner.querySelector(".banner-badge");
-          if (badge) badge.textContent = "LIVE SECURE MODE";
-          const desc = fileBanner.querySelector(".banner-desc");
-          if (desc) desc.textContent = "Running live. Owner authentication is enabled.";
-        }
-      }
 
       // If in local file preview mode or static live host and already logged in during this session
       if (isStaticHost && sessionStorage.getItem("chinnodu_offline_admin") === "true") {
@@ -4307,7 +4250,7 @@
           showToast("🎉 Welcome Somesh Garu! Access granted.");
           showDashboard();
         } else {
-          showToast("❌ Invalid credentials. Try 'admin' / 'Somesh@96766' or click Auto-fill.");
+          showToast("❌ Invalid username or password. Please try again.");
           document.getElementById("admin-password-input").value = "";
           document.getElementById("admin-password-input").focus();
         }
@@ -4389,7 +4332,7 @@
           showDashboard();
           return;
         }
-        showToast("❌ Could not connect to server. Ensure 'npm start' is running on http://localhost:8080.");
+        showToast("❌ Invalid username or password. Please try again.");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = origText;
