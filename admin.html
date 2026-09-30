@@ -29,6 +29,16 @@
       flex-direction: column;
     }
 
+    #admin-login-screen,
+    #admin-dashboard-screen {
+      animation: adminFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes adminFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .admin-header {
       background: linear-gradient(135deg, #4A0B18 0%, #6B1426 100%);
       color: #FFFFFF;
@@ -2212,7 +2222,7 @@
   </header>
 
   <!-- LOGIN CONTAINER (2-STEP: CREDENTIALS + 2FA OTP) -->
-  <div class="login-container" id="admin-login-screen">
+  <div class="login-container" id="admin-login-screen" style="display: none;">
     
     <!-- STEP 1: CREDENTIALS (EMAIL / PHONE & PASSWORD) -->
     <div id="login-step-1">
@@ -4159,45 +4169,42 @@
     }
 
     // Check Authentication on Page Load via Server-side Session
-    // If already authenticated via session cookie or offline demo, show dashboard directly; otherwise show login
     document.addEventListener("DOMContentLoaded", async () => {
       setupOtpInputHandlers();
 
-      // Check auth against live backend (via session cookie or token)
+      const hasSavedToken = Boolean(localStorage.getItem("admin_session_token"));
+      const isOfflineAdmin = sessionStorage.getItem("chinnodu_offline_admin") === "true";
+
+      // If user was previously authenticated, show dashboard immediately to prevent flashing login screen
+      if (hasSavedToken || isOfflineAdmin) {
+        showDashboard();
+      } else {
+        showLoginScreen();
+      }
+
+      // Verify token/session against live backend in background
       try {
         const authRes = await fetch("/api/admin/check-auth");
         if (authRes.ok) {
           const authData = await authRes.json();
           if (authData.authenticated) {
-            showDashboard();
+            if (!hasSavedToken && !isOfflineAdmin) {
+              showDashboard();
+            }
             return;
           }
         }
+        // If check-auth returned 401 or not authenticated
+        if (!isOfflineAdmin) {
+          localStorage.removeItem("admin_session_token");
+          showLoginScreen(hasSavedToken ? "Session expired. Please sign in." : "");
+        }
       } catch (err) {
         console.warn("Live session check notice:", err);
+        if (!hasSavedToken && !isOfflineAdmin) {
+          showLoginScreen();
+        }
       }
-
-      // Offline session fallback if backend was unreachable
-      if (sessionStorage.getItem("chinnodu_offline_admin") === "true") {
-        showDashboard();
-        return;
-      }
-
-      // If not authenticated, clear input fields and active session
-      const userInp = document.getElementById("admin-username-input");
-      const passInp = document.getElementById("admin-password-input");
-      if (userInp) userInp.value = "";
-      if (passInp) passInp.value = "";
-      sessionStorage.removeItem("admin_otp_session_id");
-
-      // Present the login screen
-      document.getElementById("admin-login-screen").style.display = "block";
-      document.getElementById("login-step-1").style.display = "block";
-      document.getElementById("login-step-2").style.display = "none";
-      document.getElementById("admin-dashboard-screen").style.display = "none";
-      document.getElementById("admin-nav-actions").style.display = "none";
-
-      if (userInp) userInp.focus();
     });
 
     // Helper: Toggle password show/hide with embedded Eye SVG icon
@@ -4239,33 +4246,6 @@
       const origText = submitBtn.innerHTML;
       submitBtn.disabled = true;
       submitBtn.innerHTML = "<span>Checking Credentials...</span>";
-
-      // If user opened file:/// or is running on GitHub Pages / custom domain, authenticate directly
-      const isStaticHost = window.location.protocol === "file:" || 
-                           window.location.hostname.includes("github.io") || 
-                           window.location.hostname.includes("chinnodu") ||
-                           (!window.location.port && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
-      if (isStaticHost) {
-        const u = username.toLowerCase();
-        const p = password;
-        const validUsers = ["admin", "somesh", "someshadigarla", "someshadigarla@gmail.com", "9676698427"];
-        const cleanDigits = u.replace(/\D/g, "");
-        const isUserValid = validUsers.includes(u) || (cleanDigits.length >= 10 && cleanDigits.slice(-10) === "9676698427");
-        const isPassValid = (p === "Somesh@96766" || p.toLowerCase() === "somesh@96766" || p === "admin" || p === "9676698427");
-
-        if (isUserValid && isPassValid) {
-          sessionStorage.setItem("chinnodu_offline_admin", "true");
-          showToast("🎉 Welcome Somesh Garu! Access granted.");
-          showDashboard();
-        } else {
-          showToast("❌ Invalid username or password. Please try again.");
-          document.getElementById("admin-password-input").value = "";
-          document.getElementById("admin-password-input").focus();
-        }
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = origText;
-        return;
-      }
 
       try {
         const res = await fetch("/api/admin/login", {
@@ -4688,13 +4668,17 @@
         });
       } catch (err) {}
       try { history.replaceState(null, "", window.location.pathname); } catch (e) {}
-      window.location.reload();
+      showLoginScreen("Logged out successfully.");
     }
 
     function showDashboard() {
-      document.getElementById("admin-login-screen").style.display = "none";
-      document.getElementById("admin-dashboard-screen").style.display = "block";
-      document.getElementById("admin-nav-actions").style.display = "flex";
+      const loginScreen = document.getElementById("admin-login-screen");
+      const dashScreen = document.getElementById("admin-dashboard-screen");
+      const navActions = document.getElementById("admin-nav-actions");
+
+      if (loginScreen) loginScreen.style.display = "none";
+      if (dashScreen) dashScreen.style.display = "block";
+      if (navActions) navActions.style.display = "flex";
 
       fetchOrders();
       fetchFinanceData();
@@ -4712,6 +4696,29 @@
         switchAdminView("finance");
       }
       fetchDatabaseStatus(); // Refresh MongoDB connection status badge
+    }
+
+    function showLoginScreen(reason = "") {
+      const loginScreen = document.getElementById("admin-login-screen");
+      const dashScreen = document.getElementById("admin-dashboard-screen");
+      const navActions = document.getElementById("admin-nav-actions");
+
+      if (loginScreen) loginScreen.style.display = "block";
+      const step1 = document.getElementById("login-step-1");
+      const step2 = document.getElementById("login-step-2");
+      if (step1) step1.style.display = "block";
+      if (step2) step2.style.display = "none";
+      if (dashScreen) dashScreen.style.display = "none";
+      if (navActions) navActions.style.display = "none";
+
+      const userInp = document.getElementById("admin-username-input");
+      const passInp = document.getElementById("admin-password-input");
+      if (userInp) userInp.value = "";
+      if (passInp) passInp.value = "";
+      sessionStorage.removeItem("admin_otp_session_id");
+
+      if (reason) showToast(reason);
+      if (userInp) userInp.focus();
     }
 
     // View Switcher: Orders vs Products vs Finance vs Heritage vs Database
@@ -4828,8 +4835,7 @@
           try { res = await fetch("orders.json"); } catch (e) {}
         }
         if (res && res.status === 401) {
-          showToast("Session expired. Please log in.");
-          window.location.reload();
+          showLoginScreen("Session expired. Please log in.");
           return;
         }
         if (res && res.ok) {
@@ -7894,8 +7900,7 @@
           ]);
 
           if (sumRes.status === 401 || txnRes.status === 401) {
-            showToast("Session expired. Please log in.");
-            window.location.reload();
+            showLoginScreen("Session expired. Please log in.");
             return;
           }
 
