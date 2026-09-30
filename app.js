@@ -579,18 +579,48 @@ document.addEventListener("DOMContentLoaded", () => {
 // Dynamic backend catalog sync with smooth fallback
 async function loadStorefrontProducts() {
   try {
-    const res = await fetch("/api/products");
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-        PRODUCTS_DATABASE = data.products;
-        PRODUCTS_DATABASE.forEach(prod => {
-          if (!APP_STATE.selectedProductWeights[prod.id]) {
-            APP_STATE.selectedProductWeights[prod.id] = prod.defaultWeight || Object.keys(prod.weights)[0] || "500g";
-          }
-        });
-        renderStorefront();
+    let prods = null;
+    try {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          prods = data.products;
+        }
       }
+    } catch (apiErr) {}
+
+    // Fallback: load products.json directly on static hosts like GitHub Pages
+    if (!prods) {
+      try {
+        const jsonRes = await fetch("products.json");
+        if (jsonRes.ok) {
+          const jsonData = await jsonRes.json();
+          if (Array.isArray(jsonData) && jsonData.length > 0) prods = jsonData;
+          else if (jsonData.products && Array.isArray(jsonData.products)) prods = jsonData.products;
+        }
+      } catch (jsonErr) {}
+    }
+
+    // Check localStorage overrides from admin edits
+    try {
+      const cached = localStorage.getItem("cf_products_override");
+      if (cached) {
+        const overrideList = JSON.parse(cached);
+        if (Array.isArray(overrideList) && overrideList.length > 0) {
+          prods = overrideList;
+        }
+      }
+    } catch (e) {}
+
+    if (prods && prods.length > 0) {
+      PRODUCTS_DATABASE = prods;
+      PRODUCTS_DATABASE.forEach(prod => {
+        if (!APP_STATE.selectedProductWeights[prod.id]) {
+          APP_STATE.selectedProductWeights[prod.id] = prod.defaultWeight || Object.keys(prod.weights)[0] || "500g";
+        }
+      });
+      renderStorefront();
     }
   } catch (err) {
     console.warn("Using embedded products catalog fallback:", err);
