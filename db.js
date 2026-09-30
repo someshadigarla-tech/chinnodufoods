@@ -46,7 +46,7 @@ class MongoManager {
     this.isConnecting = false;
     this.connectionError = null;
     this.apiKey = process.env.MONGODB_API_KEY || process.env.ATLAS_API_KEY || null;
-    const DEFAULT_ATLAS_URI = 'mongodb+srv://someshadigarla:Somesh%4096766@cluster0.6f60fe5.mongodb.net/chinnodu_foods?retryWrites=true&w=majority&appName=Cluster0';
+    const DEFAULT_ATLAS_URI = 'mongodb+srv://someshadigarla_db_user:Somesh%4096766@cluster0.6f60fe5.mongodb.net/chinnodu_foods?retryWrites=true&w=majority&appName=Cluster0';
     this.mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || DEFAULT_ATLAS_URI;
     this.dbName = 'chinnodu_foods';
     this.retryQueue = [];
