@@ -268,6 +268,16 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = "<span>Checking Credentials...</span>";
 
+      // Clear any obsolete token from previous sessions
+      localStorage.removeItem("admin_session_token");
+
+      const slowTimer = setTimeout(() => {
+        if (submitBtn.disabled) {
+          submitBtn.innerHTML = "<span>Waking Up Server...</span>";
+          showToast("⏳ Connecting to cloud kitchen backend (waking up instance)...");
+        }
+      }, 3500);
+
       try {
         const res = await fetch("/api/admin/login", {
           method: "POST",
@@ -332,8 +342,9 @@
         }
       } catch (err) {
         console.error("Login communication error:", err);
-        showToast("❌ Unable to connect to authentication server. Please check your network and try again.");
+        showToast("❌ Unable to connect to backend server. If Render was sleeping, please retry in 5 seconds.");
       } finally {
+        clearTimeout(slowTimer);
         submitBtn.disabled = false;
         submitBtn.innerHTML = origText;
       }

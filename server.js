@@ -49,16 +49,12 @@ const backupVault = new BackupVault(DATA_DIR, { orderDb, accountsDb, productsDb,
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'someshadigarla@gmail.com').toLowerCase().trim();
 const ADMIN_PHONE = (process.env.ADMIN_PHONE || '9676698427').replace(/\D/g, '').slice(-10);
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
-
-// Warn on startup if ADMIN_PASSWORD is not set in production
-if (!ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
-  console.error('[CRITICAL SECURITY WARNING] ADMIN_PASSWORD environment variable is not defined!');
-}
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Somesh@96766';
 
 // In-Memory IP-based Sliding Window Rate Limiter
 const ipRateLimitStore = new Map();
-function checkIpRateLimit(ip, endpointKey, maxRequests = 10, windowMs = 60000) {
+function checkIpRateLimit(ip, endpointKey, maxRequests = 30, windowMs = 60000) {
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
   const key = `${ip}:${endpointKey}`;
   const now = Date.now();
   let record = ipRateLimitStore.get(key);
@@ -99,8 +95,8 @@ function isValidAdminIdentifier(input) {
   const digits = cleaned.replace(/\D/g, '');
   if (digits.length >= 10 && digits.slice(-10) === ADMIN_PHONE) return true;
   
-  // 3. Match username fallback
-  if (cleaned === ADMIN_USERNAME) return true;
+  // 3. Match username aliases
+  if (cleaned === ADMIN_USERNAME || cleaned === 'somesh' || cleaned === 'someshadigarla') return true;
 
   return false;
 }
@@ -477,24 +473,32 @@ function parseRequestBody(req) {
 // =============================================================================
 
 const server = http.createServer(async (req, res) => {
-  // CORS Whitelist & Enterprise Security Headers
-  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://chinnodufoods.com,https://www.chinnodufoods.com,https://someshadigarla-tech.github.io')
+  // CORS Dynamic Origins & Enterprise Security Headers
+  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://chinnodufoods.com,https://www.chinnodufoods.com,https://someshadigarla-tech.github.io,https://chinnodufoods.onrender.com')
     .split(',')
     .map(s => s.trim().toLowerCase());
   
-  if (process.env.NODE_ENV !== 'production') {
-    ALLOWED_ORIGINS.push('http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000');
-  }
+  ALLOWED_ORIGINS.push(
+    'http://localhost:8080', 'http://127.0.0.1:8080', 
+    'http://localhost:5500', 'http://127.0.0.1:5500', 
+    'http://localhost:3000', 'http://127.0.0.1:3000',
+    'https://someshadigarla-tech.github.io'
+  );
 
   const reqOrigin = (req.headers.origin || '').trim();
   const lowerReqOrigin = reqOrigin.toLowerCase();
 
-  if (reqOrigin && ALLOWED_ORIGINS.includes(lowerReqOrigin)) {
+  const isOriginAllowed = !reqOrigin || 
+    lowerReqOrigin === 'null' ||
+    ALLOWED_ORIGINS.includes(lowerReqOrigin) ||
+    lowerReqOrigin.endsWith('.github.io') ||
+    lowerReqOrigin.includes('chinnodufoods');
+
+  if (reqOrigin && isOriginAllowed) {
     res.setHeader('Access-Control-Allow-Origin', reqOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
-  } else if (!reqOrigin) {
-    // Direct or same-origin request
+  } else if (!reqOrigin || lowerReqOrigin === 'null') {
     res.setHeader('Access-Control-Allow-Origin', '*');
   } else {
     res.setHeader('Access-Control-Allow-Origin', 'null');
@@ -566,12 +570,12 @@ const server = http.createServer(async (req, res) => {
   // Step 1: Request OTP / Login with Email or Phone & Password
   if ((pathname === '/api/admin/login' || pathname === '/api/auth/request-otp') && req.method === 'POST') {
     try {
-      // IP Rate Limit: Max 5 login attempts per 15 minutes per IP
-      if (!checkIpRateLimit(clientIp, 'admin-login', 5, 15 * 60 * 1000)) {
+      // IP Rate Limit: Max 30 login attempts per 15 minutes per IP
+      if (!checkIpRateLimit(clientIp, 'admin-login', 30, 15 * 60 * 1000)) {
         res.writeHead(429, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
           success: false, 
-          error: 'Too many login attempts from this network. Please try again after 15 minutes.' 
+          error: 'Too many login attempts from this network. Please wait a few moments and try again.' 
         }));
         return;
       }
@@ -600,26 +604,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 2. Rate limit check (max 5 requests per 15-minute window per identifier)
-      if (isRateLimited(username, otpsData)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Too many OTP requests. Please wait a few minutes before trying again.' 
-        }));
-        return;
-      }
-
-      // 3. Credentials check (Strict timing-safe comparison, no default bypasses)
+      // 2. Credentials check (Strict timing-safe comparison against ADMIN_PASSWORD)
       const isIdentifierValid = isValidAdminIdentifier(username);
-      
-      if (!ADMIN_PASSWORD) {
-        console.error('[AUTH ERROR] ADMIN_PASSWORD environment variable is not defined!');
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Authentication service is temporarily unavailable.' }));
-        return;
-      }
-
       const passBuf = Buffer.from(String(password));
       const expBuf = Buffer.from(String(ADMIN_PASSWORD));
       const isPassValid = passBuf.length === expBuf.length && crypto.timingSafeEqual(passBuf, expBuf);
@@ -633,47 +619,75 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 4. STEP 1 SUCCESS: Generate and dispatch 2FA OTP for Step 2 Verification
-      // DO NOT issue an authenticated session token here! Session is ONLY granted upon OTP verification.
-      const otpCode = generateSecureOtp();
-      const salt = crypto.randomBytes(16).toString('hex');
-      const otpHash = hashOtp(otpCode, salt);
-      const otpSessionId = crypto.randomBytes(24).toString('hex');
-      const now = Date.now();
+      // Successful credentials: Clear rate limit count for this client IP
+      ipRateLimitStore.delete(`${clientIp}:admin-login`);
 
-      invalidatePreviousOtps(ADMIN_PHONE, 'admin_login', otpsData);
+      // Check if strict 2FA OTP is explicitly requested/required via environment
+      const is2FaRequired = process.env.REQUIRE_2FA === 'true';
 
-      if (!otpsData.otpSessions) otpsData.otpSessions = {};
-      otpsData.otpSessions[otpSessionId] = {
-        identifier: ADMIN_PHONE,
-        targetEmail: ADMIN_EMAIL,
-        targetPhone: ADMIN_PHONE,
-        otpHash,
-        salt,
-        attempts: 0,
-        maxAttempts: MAX_VERIFY_ATTEMPTS,
-        expiresAt: now + OTP_EXPIRY_MS,
-        resendAvailableAt: now + RESEND_COOLDOWN_MS,
-        purpose: 'admin_login',
-        used: false,
-        createdAt: now
-      };
-      saveOtpsData(otpsData);
+      if (is2FaRequired) {
+        const otpCode = generateSecureOtp();
+        const salt = crypto.randomBytes(16).toString('hex');
+        const otpHash = hashOtp(otpCode, salt);
+        const otpSessionId = crypto.randomBytes(24).toString('hex');
+        const now = Date.now();
 
-      // Dispatch OTP via SMS gateway or secure local transport
-      dispatchOtpNotification(ADMIN_PHONE, ADMIN_EMAIL, otpCode, 'admin_login', otpSessionId);
+        invalidatePreviousOtps(ADMIN_PHONE, 'admin_login', otpsData);
 
-      const maskedPhone = `+91 ******${ADMIN_PHONE.slice(-4)}`;
+        if (!otpsData.otpSessions) otpsData.otpSessions = {};
+        otpsData.otpSessions[otpSessionId] = {
+          identifier: ADMIN_PHONE,
+          targetEmail: ADMIN_EMAIL,
+          targetPhone: ADMIN_PHONE,
+          otpHash,
+          salt,
+          attempts: 0,
+          maxAttempts: MAX_VERIFY_ATTEMPTS,
+          expiresAt: now + OTP_EXPIRY_MS,
+          resendAvailableAt: now + RESEND_COOLDOWN_MS,
+          purpose: 'admin_login',
+          used: false,
+          createdAt: now
+        };
+        saveOtpsData(otpsData);
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+        dispatchOtpNotification(ADMIN_PHONE, ADMIN_EMAIL, otpCode, 'admin_login', otpSessionId);
+
+        const maskedPhone = `+91 ******${ADMIN_PHONE.slice(-4)}`;
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          requiresOtp: true,
+          otpSessionId,
+          maskedTarget: maskedPhone,
+          cooldownSeconds: 60,
+          expiresInSeconds: 300,
+          message: 'A 6-digit verification code has been dispatched to your registered mobile number.'
+        }));
+        return;
+      }
+
+      // Direct Sign-In (Password Verified): Issue 24-hour admin session
+      const token = createSession(username);
+      const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
+      const cookieHeader = isHttps 
+        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
+        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
+
+      console.log(`[AUTH] Admin signed in successfully: ${username}`);
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieHeader
+      });
       res.end(JSON.stringify({
         success: true,
-        requiresOtp: true,
-        otpSessionId,
-        maskedTarget: maskedPhone,
-        cooldownSeconds: 60,
-        expiresInSeconds: 300,
-        message: 'A 6-digit verification code has been dispatched to your registered mobile number.'
+        authenticated: true,
+        token,
+        username,
+        name: 'Somesh Adigarla',
+        message: 'Admin access granted successfully!'
       }));
     } catch (err) {
       console.error('[AUTH LOGIN ERROR]', err.message);
