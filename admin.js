@@ -162,8 +162,19 @@
       if (first) first.focus();
     }
 
-    // Generic 6-Digit Grid Setup (Auto-advance, backspace jump, paste, auto-verify)
+    // Generic 6-Digit Grid Setup (Auto-advance, backspace jump, paste, auto-verify with debounce)
     function setupDigitGrid(prefix, count = 6, onComplete, errorBannerId) {
+      let completeDebounceTimer = null;
+      function checkAndTriggerComplete() {
+        clearTimeout(completeDebounceTimer);
+        completeDebounceTimer = setTimeout(() => {
+          const fullCode = getEnteredDigitCode(prefix, count);
+          if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
+            onComplete();
+          }
+        }, 40);
+      }
+
       for (let i = 0; i < count; i++) {
         const input = document.getElementById(`${prefix}-digit-${i}`);
         if (!input) continue;
@@ -190,10 +201,7 @@
                 next.select();
               }
             }
-            const fullCode = getEnteredDigitCode(prefix, count);
-            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
-              onComplete();
-            }
+            checkAndTriggerComplete();
             return;
           }
 
@@ -241,10 +249,7 @@
             const focusIdx = Math.min(raw.length, count - 1);
             const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
             if (focusEl) focusEl.focus();
-            const fullCode = getEnteredDigitCode(prefix, count);
-            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
-              onComplete();
-            }
+            checkAndTriggerComplete();
             return;
           }
 
@@ -257,10 +262,7 @@
               next.select();
             }
           }
-          const fullCode = getEnteredDigitCode(prefix, count);
-          if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
-            onComplete();
-          }
+          checkAndTriggerComplete();
         });
 
         input.addEventListener("paste", (e) => {
@@ -275,10 +277,7 @@
             const focusIdx = Math.min(pasteData.length, count - 1);
             const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
             if (focusEl) focusEl.focus();
-            const fullCode = getEnteredDigitCode(prefix, count);
-            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
-              onComplete();
-            }
+            checkAndTriggerComplete();
           }
         });
       }
@@ -296,7 +295,13 @@
       const submitBtn = document.getElementById("btn-login-submit");
       const origText = submitBtn.innerHTML;
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "<span>Checking Credentials...</span>";
+      submitBtn.innerHTML = '<span class="spinner-sm"></span><span>Checking Credentials...</span>';
+
+      const wakingHint = document.getElementById("login-waking-hint");
+      if (wakingHint) wakingHint.style.display = "none";
+      const wakingTimer = setTimeout(() => {
+        if (wakingHint) wakingHint.style.display = "block";
+      }, 1800);
 
       const errBanner = document.getElementById("login-error-banner");
       if (errBanner) {
@@ -364,6 +369,8 @@
             document.getElementById("login-step-recovery").style.display = "none";
             document.getElementById("login-step-2").style.display = "block";
             clearDigitGrid("totp", 6);
+            const firstTotp = document.getElementById("totp-digit-0");
+            if (firstTotp) { firstTotp.focus(); firstTotp.select(); }
             showToast("🔐 Enter the 6-digit code from your Authenticator app.");
             return;
           }
@@ -393,6 +400,8 @@
         console.error("Login communication error:", err);
         showToast("❌ Unable to connect to backend server. Please retry in a few seconds.");
       } finally {
+        clearTimeout(wakingTimer);
+        if (wakingHint) wakingHint.style.display = "none";
         submitBtn.disabled = false;
         submitBtn.innerHTML = origText;
       }
@@ -433,7 +442,7 @@
       const verifyBtn = document.getElementById("btn-totp-submit");
       const origText = verifyBtn.innerHTML;
       verifyBtn.disabled = true;
-      verifyBtn.innerHTML = "<span>⚡ Verifying code...</span>";
+      verifyBtn.innerHTML = '<span class="spinner-sm"></span><span>Verifying code...</span>';
 
       try {
         const res = await fetch("/api/admin/2fa/verify", {
@@ -452,6 +461,7 @@
             localStorage.setItem("admin_session_token", data.token);
           }
           PRE_AUTH_SESSION_ID = null;
+          verifyBtn.innerHTML = '<span>✅ Verified! Loading Portal...</span>';
           showToast("🎉 Two-factor authentication successful!");
           showDashboard();
         } else {
@@ -911,11 +921,21 @@
       if (dashScreen) dashScreen.style.display = "block";
       if (navActions) navActions.style.display = "flex";
 
-      fetchOrders();
-      fetchFinanceData();
-      fetchAdminProducts();
+      // 1. Instant optimistic rendering from local cache (0ms perceived transition)
+      try {
+        const cached = localStorage.getItem("cf_admin_orders_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Array.isArray(parsed.orders) && parsed.orders.length > 0) {
+            ALL_ORDERS = parsed.orders;
+            TOTAL_ORDERS = Number(parsed.total) || ALL_ORDERS.length;
+            if (parsed.stats) updateDashboardStats(parsed.stats);
+            renderOrdersList();
+          }
+        }
+      } catch (cacheErr) {}
 
-      // Honor URL hash or param if admin was previously on specific tab
+      // 2. Honor URL hash or param if admin was previously on specific tab
       const hash = (window.location.hash || "").replace("#", "").toLowerCase();
       if (hash === "products" || hash === "menu" || hash === "items") {
         switchAdminView("products");
@@ -926,7 +946,14 @@
       } else if (hash === "finance" || hash === "ledger") {
         switchAdminView("finance");
       }
-      fetchDatabaseStatus(); // Refresh MongoDB connection status badge
+
+      // 3. Revalidate all portal data concurrently with high-speed parallel requests
+      Promise.allSettled([
+        fetchOrders(),
+        fetchFinanceData(),
+        fetchAdminProducts(),
+        fetchDatabaseStatus()
+      ]);
     }
 
     function showLoginScreen(reason = "") {
@@ -1052,6 +1079,16 @@
       if (page !== undefined && page !== null) {
         CURRENT_PAGE = page;
       }
+      const container = document.getElementById("orders-list-container");
+      if (container && (!ALL_ORDERS || ALL_ORDERS.length === 0) && !container.children.length) {
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:12px; padding:10px 0;">
+            <div class="skeleton-placeholder" style="height:80px; width:100%;"></div>
+            <div class="skeleton-placeholder" style="height:80px; width:100%;"></div>
+            <div class="skeleton-placeholder" style="height:80px; width:100%;"></div>
+          </div>
+        `;
+      }
       try {
         const queryParams = new URLSearchParams({
           page: CURRENT_PAGE,
@@ -1106,6 +1143,18 @@
               AVAILABLE_DATES_SUMMARY = data.datesSummary;
               renderDatesBar();
             }
+
+            // Cache orders to local storage for instant zero-latency load on next visit
+            try {
+              if (CURRENT_PAGE === 1 && CURRENT_ORDER_FILTER === "all" && !SEARCH_QUERY && CURRENT_DATE_FILTER === "all") {
+                localStorage.setItem("cf_admin_orders_cache", JSON.stringify({
+                  orders: ALL_ORDERS,
+                  total: TOTAL_ORDERS,
+                  stats: data.stats || null,
+                  timestamp: Date.now()
+                }));
+              }
+            } catch (cacheErr) {}
           }
         }
       } catch (err) {

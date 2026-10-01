@@ -45,15 +45,9 @@ const totpService = new TotpAuthService({
 (async () => {
   try {
     await mongoManager.connect();
-    if (mongoManager.isConnected) {
-      await Promise.all([
-        orderDb.syncWithMongo(),
-        productsDb.syncWithMongo(),
-        accountsDb.syncWithMongo(),
-        heritageDb.syncWithMongo()
-      ]);
-
-      if (process.env.NODE_ENV !== 'test' && mongoManager.db) {
+    if (mongoManager.isConnected && mongoManager.db) {
+      // 1. Immediately prioritize Admin 2FA config sync into RAM (< 50ms)
+      if (process.env.NODE_ENV !== 'test') {
         try {
           const otpsData = readOtpsData();
           const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
@@ -79,6 +73,13 @@ const totpService = new TotpAuthService({
         }
       }
 
+      // 2. Synchronize store collections concurrently in background
+      Promise.all([
+        orderDb.syncWithMongo(),
+        productsDb.syncWithMongo(),
+        accountsDb.syncWithMongo(),
+        heritageDb.syncWithMongo()
+      ]).catch(e => console.error('[SERVER DB SYNC NOTICE]', e.message));
     }
   } catch (err) {
     console.error('[SERVER MONGODB INIT NOTICE]', err.message);
@@ -508,6 +509,8 @@ function sendJsonResponse(req, res, statusCode, data) {
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Vary', 'Accept-Encoding');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=60, max=1000');
 
   // Gzip compression for responses > 1KB when supported by client
   if (acceptEncoding.includes('gzip') && jsonStr.length > 1024) {

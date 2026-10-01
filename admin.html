@@ -12,6 +12,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   
+  <!-- Cloud Connection Pre-warming & Socket Preconnect -->
+  <link rel="dns-prefetch" href="https://chinnodufoods.onrender.com">
+  <link rel="preconnect" href="https://chinnodufoods.onrender.com" crossorigin>
+  <script>
+    (function() {
+      try {
+        const target = (window.location.hostname.includes("github.io") || window.location.hostname.includes("chinnodufoods.com"))
+          ? "https://chinnodufoods.onrender.com/api/ping"
+          : "/api/ping";
+        fetch(target, { mode: "no-cors", keepalive: true }).catch(function(){});
+      } catch(e) {}
+    })();
+  </script>
+  
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css?v=2fa_2026">
 </head>
@@ -93,6 +107,9 @@
         <button type="submit" class="btn-save-tracking" id="btn-login-submit" style="width:100%; justify-content:center; padding:0.85rem; font-size:1rem;">
           <span>Login ➡️</span>
         </button>
+        <div id="login-waking-hint" style="display:none; margin-top:10px; font-size:0.82rem; color:#854D0E; background:#FEFCE8; border:1px solid #FEF08A; border-radius:8px; padding:7px 10px; text-align:center;">
+          <span>⚡ Secure cloud server is waking up, please wait a moment...</span>
+        </div>
       </form>
     </div>
 
