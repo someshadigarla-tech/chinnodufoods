@@ -80,10 +80,11 @@ function extractCookie(resHeaders) {
 async function runTests() {
   // Start the server
   const serverModule = require("./server.js");
-  const { readOtpsData, saveOtpsData } = serverModule;
+  const { readOtpsData, saveOtpsData, flushOtpsSync } = serverModule;
 
-  // Reset 2FA state to initial clean state
+  // Reset 2FA state to initial clean state for tests, while saving current config to restore afterwards
   const initialOtps = readOtpsData();
+  const savedOriginalConfig = JSON.parse(JSON.stringify(initialOtps.admin2fa || {}));
   initialOtps.admin2fa = {
     two_factor_enabled: false,
     totp_secret_encrypted: null,
@@ -91,6 +92,7 @@ async function runTests() {
     recovery_codes_hashes: []
   };
   saveOtpsData(initialOtps);
+
 
   // Give server 500ms to bind to port
   await new Promise((r) => setTimeout(r, 600));
@@ -296,17 +298,62 @@ async function runTests() {
     console.log(`🎯 RESULTS: ${passed} PASSED, ${failed} FAILED`);
     console.log("===============================================================");
 
+    async function restoreAndExit(code) {
+      try {
+        const { mongoManager } = require('./db.js');
+        if (!mongoManager.isConnected) {
+          await mongoManager.connect();
+        }
+        if (mongoManager.db) {
+          const doc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+          if (doc && doc.two_factor_enabled) {
+            const finalOtps = readOtpsData();
+            finalOtps.admin2fa = {
+              two_factor_enabled: doc.two_factor_enabled,
+              totp_secret_encrypted: doc.totp_secret_encrypted,
+              two_factor_confirmed_at: doc.two_factor_confirmed_at,
+              recovery_codes_hashes: doc.recovery_codes_hashes || []
+            };
+            saveOtpsData(finalOtps);
+            if (typeof flushOtpsSync === 'function') flushOtpsSync();
+            console.log("[TEST] Restored active admin 2FA configuration from MongoDB Atlas.");
+          }
+        }
+      } catch (e) {
+        console.warn("[TEST] Could not restore from Atlas:", e.message);
+      }
+      process.exit(code);
+    }
+
     if (failed === 0) {
       console.log("✨ ALL 11 SECURITY AND FUNCTIONAL E2E TESTS PASSED SUCCESSFULLY! ✨\n");
-      process.exit(0);
+      await restoreAndExit(0);
     } else {
       console.error("💥 SOME TESTS FAILED!\n");
-      process.exit(1);
+      await restoreAndExit(1);
     }
   } catch (err) {
     console.error("Unexpected test error:", err);
+    try {
+      const { mongoManager } = require('./db.js');
+      if (mongoManager.db) {
+        const doc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+        if (doc && doc.two_factor_enabled) {
+          const finalOtps = readOtpsData();
+          finalOtps.admin2fa = {
+            two_factor_enabled: doc.two_factor_enabled,
+            totp_secret_encrypted: doc.totp_secret_encrypted,
+            two_factor_confirmed_at: doc.two_factor_confirmed_at,
+            recovery_codes_hashes: doc.recovery_codes_hashes || []
+          };
+          saveOtpsData(finalOtps);
+          if (typeof flushOtpsSync === 'function') flushOtpsSync();
+        }
+      }
+    } catch (_) {}
     process.exit(1);
   }
 }
 
 runTests();
+

@@ -53,11 +53,11 @@ const totpService = new TotpAuthService({
         heritageDb.syncWithMongo()
       ]);
 
-      if (mongoManager.db) {
+      if (process.env.NODE_ENV !== 'test' && mongoManager.db) {
         try {
+          const otpsData = readOtpsData();
           const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
           if (adminAuthDoc && adminAuthDoc.totp_secret_encrypted) {
-            const otpsData = readOtpsData();
             otpsData.admin2fa = {
               two_factor_enabled: adminAuthDoc.two_factor_enabled,
               totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
@@ -66,11 +66,19 @@ const totpService = new TotpAuthService({
             };
             saveOtpsData(otpsData);
             console.log('[SERVER MONGODB] Admin 2FA configuration synchronized from MongoDB Atlas cluster.');
+          } else if (otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled && otpsData.admin2fa.totp_secret_encrypted) {
+            await mongoManager.db.collection('admin_auth').updateOne(
+              { _id: 'admin_2fa_config' },
+              { $set: otpsData.admin2fa },
+              { upsert: true }
+            );
+            console.log('[SERVER MONGODB] Local active 2FA configuration synchronized to MongoDB Atlas cluster.');
           }
         } catch (e) {
           console.error('[SERVER MONGODB 2FA NOTICE]', e.message);
         }
       }
+
     }
   } catch (err) {
     console.error('[SERVER MONGODB INIT NOTICE]', err.message);
@@ -707,7 +715,32 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Check if 2FA is already enabled on this admin account
-      const is2FaEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled && otpsData.admin2fa.totp_secret_encrypted);
+      let is2FaEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled && otpsData.admin2fa.totp_secret_encrypted);
+
+      // Cloud Persistence Fallback: if not enabled locally, query MongoDB Atlas collection 'admin_auth'
+      if (!is2FaEnabled && process.env.NODE_ENV !== 'test') {
+        if (!mongoManager.isConnected && mongoManager.mongoUri) {
+          try { await mongoManager.connect(); } catch (_) {}
+        }
+        if (mongoManager.db) {
+          try {
+            const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+            if (adminAuthDoc && adminAuthDoc.two_factor_enabled && adminAuthDoc.totp_secret_encrypted) {
+              otpsData.admin2fa = {
+                two_factor_enabled: adminAuthDoc.two_factor_enabled,
+                totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
+                two_factor_confirmed_at: adminAuthDoc.two_factor_confirmed_at,
+                recovery_codes_hashes: adminAuthDoc.recovery_codes_hashes || []
+              };
+              saveOtpsData(otpsData);
+              is2FaEnabled = true;
+              console.log('[AUTH] Admin 2FA configuration retrieved and verified from MongoDB Atlas.');
+            }
+          } catch (e) {
+            console.warn('[AUTH 2FA MONGO RETRIEVAL NOTICE]', e.message);
+          }
+        }
+      }
 
       // Create temporary pre-authentication session (DO NOT ISSUE FULL SESSION TOKEN YET)
       const preAuth = totpService.createPreAuthSession(username);
@@ -812,8 +845,23 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const otpsData = readOtpsData();
-      const encryptedSecret = otpsData.admin2fa?.totp_secret_encrypted;
+      let otpsData = readOtpsData();
+      let encryptedSecret = otpsData.admin2fa?.totp_secret_encrypted;
+      if (!encryptedSecret && process.env.NODE_ENV !== 'test' && mongoManager.db) {
+        try {
+          const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+          if (adminAuthDoc && adminAuthDoc.totp_secret_encrypted) {
+            otpsData.admin2fa = {
+              two_factor_enabled: adminAuthDoc.two_factor_enabled,
+              totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
+              two_factor_confirmed_at: adminAuthDoc.two_factor_confirmed_at,
+              recovery_codes_hashes: adminAuthDoc.recovery_codes_hashes || []
+            };
+            saveOtpsData(otpsData);
+            encryptedSecret = adminAuthDoc.totp_secret_encrypted;
+          }
+        } catch (_) {}
+      }
       if (!encryptedSecret) {
         sendJsonResponse(req, res, 400, {
           success: false,
@@ -1011,7 +1059,21 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const otpsData = readOtpsData();
+      let otpsData = readOtpsData();
+      if (!otpsData.admin2fa?.recovery_codes_hashes && process.env.NODE_ENV !== 'test' && mongoManager.db) {
+        try {
+          const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+          if (adminAuthDoc && adminAuthDoc.recovery_codes_hashes) {
+            otpsData.admin2fa = {
+              two_factor_enabled: adminAuthDoc.two_factor_enabled,
+              totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
+              two_factor_confirmed_at: adminAuthDoc.two_factor_confirmed_at,
+              recovery_codes_hashes: adminAuthDoc.recovery_codes_hashes || []
+            };
+            saveOtpsData(otpsData);
+          }
+        } catch (_) {}
+      }
       const recResult = totpService.verifyRecoveryCode(otpsData.admin2fa?.recovery_codes_hashes, submittedCode);
 
       if (!recResult.success) {
@@ -1122,7 +1184,21 @@ const server = http.createServer(async (req, res) => {
       sendJsonResponse(req, res, 401, { success: false, error: 'Unauthorized.' });
       return;
     }
-    const otpsData = readOtpsData();
+    let otpsData = readOtpsData();
+    if (!otpsData.admin2fa?.totp_secret_encrypted && process.env.NODE_ENV !== 'test' && mongoManager.db) {
+      try {
+        const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+        if (adminAuthDoc && adminAuthDoc.totp_secret_encrypted) {
+          otpsData.admin2fa = {
+            two_factor_enabled: adminAuthDoc.two_factor_enabled,
+            totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
+            two_factor_confirmed_at: adminAuthDoc.two_factor_confirmed_at,
+            recovery_codes_hashes: adminAuthDoc.recovery_codes_hashes || []
+          };
+          saveOtpsData(otpsData);
+        }
+      } catch (_) {}
+    }
     const isEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled);
     const hashes = otpsData.admin2fa?.recovery_codes_hashes || [];
     const remaining = hashes.filter(r => !r.used).length;
@@ -2258,6 +2334,7 @@ module.exports = {
   server,
   totpService,
   readOtpsData,
-  saveOtpsData
+  saveOtpsData,
+  flushOtpsSync
 };
 
