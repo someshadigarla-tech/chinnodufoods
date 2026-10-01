@@ -956,7 +956,7 @@ const server = http.createServer(async (req, res) => {
       saveOtpsData(otpsData);
 
       // Async MongoDB sync
-      if (mongoManager.isConnected && mongoManager.db) {
+      if (process.env.NODE_ENV !== 'test' && mongoManager.isConnected && mongoManager.db) {
         mongoManager.db.collection('admin_auth').updateOne(
           { _id: 'admin_2fa_config' },
           { $set: otpsData.admin2fa },
@@ -1089,7 +1089,7 @@ const server = http.createServer(async (req, res) => {
 
       // Recovery code matched and consumed! Save DB
       saveOtpsData(otpsData);
-      if (mongoManager.isConnected && mongoManager.db) {
+      if (process.env.NODE_ENV !== 'test' && mongoManager.isConnected && mongoManager.db) {
         mongoManager.db.collection('admin_auth').updateOne(
           { _id: 'admin_2fa_config' },
           { $set: otpsData.admin2fa },
@@ -1161,7 +1161,7 @@ const server = http.createServer(async (req, res) => {
       };
       saveOtpsData(otpsData);
 
-      if (mongoManager.isConnected && mongoManager.db) {
+      if (process.env.NODE_ENV !== 'test' && mongoManager.isConnected && mongoManager.db) {
         mongoManager.db.collection('admin_auth').updateOne(
           { _id: 'admin_2fa_config' },
           { $set: otpsData.admin2fa },
@@ -1177,6 +1177,55 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[AUTH 2FA DISABLE ERROR]', err.message);
       sendJsonResponse(req, res, 500, { success: false, error: 'Failed to disable 2FA.' });
+    }
+    return;
+  }
+
+  // Emergency 2FA Reset / Re-pairing (Allows admin to reset 2FA by verifying master credentials)
+  if ((pathname === '/api/admin/2fa/reset' || pathname === '/admin/2fa/reset') && req.method === 'POST') {
+    try {
+      const body = await parseRequestBody(req);
+      const username = String(body.username || '').toLowerCase().trim();
+      const password = String(body.password || '');
+
+      const isUsernameValid = (username === ADMIN_EMAIL.toLowerCase() || username === ADMIN_USERNAME.toLowerCase() || username === 'admin');
+      const passBuf = Buffer.from(password);
+      const expBuf = Buffer.from(ADMIN_PASSWORD);
+      const isPasswordValid = (passBuf.length === expBuf.length && crypto.timingSafeEqual(passBuf, expBuf));
+
+      if (!isUsernameValid || !isPasswordValid) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Invalid admin credentials. Cannot reset 2FA without correct password.'
+        });
+        return;
+      }
+
+      const otpsData = readOtpsData();
+      otpsData.admin2fa = {
+        two_factor_enabled: false,
+        totp_secret_encrypted: null,
+        two_factor_confirmed_at: null,
+        recovery_codes_hashes: []
+      };
+      saveOtpsData(otpsData);
+
+      if (process.env.NODE_ENV !== 'test' && mongoManager.isConnected && mongoManager.db) {
+        await mongoManager.db.collection('admin_auth').updateOne(
+          { _id: 'admin_2fa_config' },
+          { $set: otpsData.admin2fa },
+          { upsert: true }
+        ).catch(e => console.error('[MONGO 2FA RESET NOTICE]', e.message));
+      }
+
+      console.log('[AUTH] Admin 2FA has been successfully reset. Re-pairing required.');
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        message: 'Two-factor authentication has been reset. Please sign in to pair your authenticator app.'
+      });
+    } catch (err) {
+      console.error('[AUTH 2FA RESET ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Failed to reset 2FA.' });
     }
     return;
   }
@@ -1252,7 +1301,7 @@ const server = http.createServer(async (req, res) => {
       otpsData.admin2fa.recovery_codes_hashes = fresh.hashes;
       saveOtpsData(otpsData);
 
-      if (mongoManager.isConnected && mongoManager.db) {
+      if (process.env.NODE_ENV !== 'test' && mongoManager.isConnected && mongoManager.db) {
         mongoManager.db.collection('admin_auth').updateOne(
           { _id: 'admin_2fa_config' },
           { $set: { recovery_codes_hashes: fresh.hashes } }

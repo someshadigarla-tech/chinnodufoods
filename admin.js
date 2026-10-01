@@ -467,7 +467,7 @@
         } else {
           const errMsg = data.error || "Invalid or expired verification code. Please check your Authenticator app.";
           if (errBanner) {
-            errBanner.textContent = errMsg;
+            errBanner.innerHTML = `${errMsg} <div style="margin-top:8px;"><button type="button" onclick="promptReset2Fa()" style="background:#FFF; border:1px solid #DC2626; color:#DC2626; border-radius:6px; font-size:0.8rem; font-weight:700; padding:4px 10px; cursor:pointer;">🔄 Click here to Re-pair Authenticator App</button></div>`;
             errBanner.style.display = "block";
           }
           showToast("❌ " + errMsg);
@@ -681,6 +681,32 @@
       if (stepRec) stepRec.style.display = "none";
       if (step2) step2.style.display = "block";
       clearDigitGrid("totp", 6);
+    }
+
+    async function promptReset2Fa() {
+      const pwd = prompt("Enter your Admin Password to reset and re-pair your Authenticator App:");
+      if (!pwd) return;
+
+      const usernameInput = document.getElementById("admin-username-input");
+      const username = (usernameInput && usernameInput.value.trim()) || "someshadigarla@gmail.com";
+
+      try {
+        const res = await fetch("/api/admin/2fa/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ username, password: pwd })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast("✅ 2FA successfully reset! Please sign in to scan your new QR code.");
+          backToLoginStep1();
+        } else {
+          showToast("❌ " + (data.error || "Password incorrect. Cannot reset 2FA."));
+        }
+      } catch (err) {
+        showToast("❌ Network error connecting to server.");
+      }
     }
 
     function toggleManualKeyDisplay() {

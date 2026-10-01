@@ -300,27 +300,13 @@ async function runTests() {
 
     async function restoreAndExit(code) {
       try {
-        const { mongoManager } = require('./db.js');
-        if (!mongoManager.isConnected) {
-          await mongoManager.connect();
-        }
-        if (mongoManager.db) {
-          const doc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
-          if (doc && doc.two_factor_enabled) {
-            const finalOtps = readOtpsData();
-            finalOtps.admin2fa = {
-              two_factor_enabled: doc.two_factor_enabled,
-              totp_secret_encrypted: doc.totp_secret_encrypted,
-              two_factor_confirmed_at: doc.two_factor_confirmed_at,
-              recovery_codes_hashes: doc.recovery_codes_hashes || []
-            };
-            saveOtpsData(finalOtps);
-            if (typeof flushOtpsSync === 'function') flushOtpsSync();
-            console.log("[TEST] Restored active admin 2FA configuration from MongoDB Atlas.");
-          }
-        }
+        const finalOtps = readOtpsData();
+        finalOtps.admin2fa = savedOriginalConfig;
+        saveOtpsData(finalOtps);
+        if (typeof flushOtpsSync === 'function') flushOtpsSync();
+        console.log("[TEST] Restored original pre-test 2FA configuration in RAM/JSON.");
       } catch (e) {
-        console.warn("[TEST] Could not restore from Atlas:", e.message);
+        console.warn("[TEST] Could not restore config:", e.message);
       }
       process.exit(code);
     }
@@ -335,21 +321,10 @@ async function runTests() {
   } catch (err) {
     console.error("Unexpected test error:", err);
     try {
-      const { mongoManager } = require('./db.js');
-      if (mongoManager.db) {
-        const doc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
-        if (doc && doc.two_factor_enabled) {
-          const finalOtps = readOtpsData();
-          finalOtps.admin2fa = {
-            two_factor_enabled: doc.two_factor_enabled,
-            totp_secret_encrypted: doc.totp_secret_encrypted,
-            two_factor_confirmed_at: doc.two_factor_confirmed_at,
-            recovery_codes_hashes: doc.recovery_codes_hashes || []
-          };
-          saveOtpsData(finalOtps);
-          if (typeof flushOtpsSync === 'function') flushOtpsSync();
-        }
-      }
+      const finalOtps = readOtpsData();
+      finalOtps.admin2fa = savedOriginalConfig;
+      saveOtpsData(finalOtps);
+      if (typeof flushOtpsSync === 'function') flushOtpsSync();
     } catch (_) {}
     process.exit(1);
   }
