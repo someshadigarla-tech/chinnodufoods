@@ -11,6 +11,9 @@ node_modules/
 otps.json
 *.tmp
 *.log
+authenticator-qr-code.png
+scan-qr.html
+
 
 # Runtime Data Stores & Backups (Contains live customer PII & transactions)
 # Safe sample templates are seeded if files are absent

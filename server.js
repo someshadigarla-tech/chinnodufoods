@@ -13,6 +13,7 @@ const {
   BackupVault, 
   mongoManager 
 } = require('./db.js');
+const { TotpAuthService } = require('./totp-auth.js');
 
 const PORT = process.env.PORT || 8080;
 const DATA_DIR = process.env.DATA_DIR || __dirname;
@@ -28,6 +29,18 @@ const productsDb = new ProductsDatabase(PRODUCTS_FILE).init();
 const heritageDb = new HeritageDatabase(HERITAGE_FILE).init();
 const backupVault = new BackupVault(DATA_DIR, { orderDb, accountsDb, productsDb, heritageDb });
 
+// Real Admin Credentials & 2FA Configuration
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'someshadigarla@gmail.com').toLowerCase().trim();
+const ADMIN_PHONE = (process.env.ADMIN_PHONE || '9676698427').replace(/\D/g, '').slice(-10);
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Somesh@96766';
+
+// Initialize Standard RFC 6238 TOTP Two-Factor Authentication Engine
+const totpService = new TotpAuthService({
+  issuer: 'Chinnodu Foods',
+  account: ADMIN_EMAIL
+});
+
 // Asynchronously connect to MongoDB & sync collections for Zero Data Loss
 (async () => {
   try {
@@ -39,17 +52,30 @@ const backupVault = new BackupVault(DATA_DIR, { orderDb, accountsDb, productsDb,
         accountsDb.syncWithMongo(),
         heritageDb.syncWithMongo()
       ]);
+
+      if (mongoManager.db) {
+        try {
+          const adminAuthDoc = await mongoManager.db.collection('admin_auth').findOne({ _id: 'admin_2fa_config' });
+          if (adminAuthDoc && adminAuthDoc.totp_secret_encrypted) {
+            const otpsData = readOtpsData();
+            otpsData.admin2fa = {
+              two_factor_enabled: adminAuthDoc.two_factor_enabled,
+              totp_secret_encrypted: adminAuthDoc.totp_secret_encrypted,
+              two_factor_confirmed_at: adminAuthDoc.two_factor_confirmed_at,
+              recovery_codes_hashes: adminAuthDoc.recovery_codes_hashes || []
+            };
+            saveOtpsData(otpsData);
+            console.log('[SERVER MONGODB] Admin 2FA configuration synchronized from MongoDB Atlas cluster.');
+          }
+        } catch (e) {
+          console.error('[SERVER MONGODB 2FA NOTICE]', e.message);
+        }
+      }
     }
   } catch (err) {
     console.error('[SERVER MONGODB INIT NOTICE]', err.message);
   }
 })();
-
-// Real Admin Credentials & 2FA Configuration
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'someshadigarla@gmail.com').toLowerCase().trim();
-const ADMIN_PHONE = (process.env.ADMIN_PHONE || '9676698427').replace(/\D/g, '').slice(-10);
-const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Somesh@96766';
 
 // In-Memory IP-based Sliding Window Rate Limiter
 const ipRateLimitStore = new Map();
@@ -116,7 +142,19 @@ let otpsDirty = false;
 function loadOtpsInitial() {
   try {
     if (!fs.existsSync(OTPS_FILE)) {
-      otpsMemoryCache = { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
+      otpsMemoryCache = { 
+        otpSessions: {}, 
+        sessions: {}, 
+        adminSessions: {}, 
+        lockouts: {}, 
+        rateLimits: {},
+        admin2fa: {
+          two_factor_enabled: false,
+          totp_secret_encrypted: null,
+          two_factor_confirmed_at: null,
+          recovery_codes_hashes: []
+        }
+      };
       fs.writeFileSync(OTPS_FILE, JSON.stringify(otpsMemoryCache, null, 2), 'utf8');
       return otpsMemoryCache;
     }
@@ -127,11 +165,31 @@ function loadOtpsInitial() {
     if (!data.adminSessions) data.adminSessions = {};
     if (!data.lockouts) data.lockouts = {};
     if (!data.rateLimits) data.rateLimits = {};
+    if (!data.admin2fa) {
+      data.admin2fa = {
+        two_factor_enabled: false,
+        totp_secret_encrypted: null,
+        two_factor_confirmed_at: null,
+        recovery_codes_hashes: []
+      };
+    }
     otpsMemoryCache = data;
     return otpsMemoryCache;
   } catch (err) {
     console.error('Error reading otps file:', err);
-    otpsMemoryCache = { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
+    otpsMemoryCache = { 
+      otpSessions: {}, 
+      sessions: {}, 
+      adminSessions: {}, 
+      lockouts: {}, 
+      rateLimits: {},
+      admin2fa: {
+        two_factor_enabled: false,
+        totp_secret_encrypted: null,
+        two_factor_confirmed_at: null,
+        recovery_codes_hashes: []
+      }
+    };
     return otpsMemoryCache;
   }
 }
@@ -141,6 +199,14 @@ function readOtpsData() {
     loadOtpsInitial();
   }
   const data = otpsMemoryCache;
+  if (!data.admin2fa) {
+    data.admin2fa = {
+      two_factor_enabled: false,
+      totp_secret_encrypted: null,
+      two_factor_confirmed_at: null,
+      recovery_codes_hashes: []
+    };
+  }
   const unifiedSessions = data.otpSessions || {};
   const now = Date.now();
   let changed = false;
@@ -366,6 +432,14 @@ function createSession(username) {
   return token;
 }
 
+function setSessionCookie(res, req, token) {
+  const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
+  const cookieHeader = isHttps 
+    ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
+    : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
+  res.setHeader('Set-Cookie', cookieHeader);
+}
+
 function parseCookies(req) {
   const list = {};
   const rc = req.headers.cookie;
@@ -564,19 +638,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---------------------------------------------------------------------------
-  // 1. SECURE 2-FACTOR OTP AUTHENTICATION
+  // 1. SECURE 2-FACTOR AUTHENTICATION (TOTP AUTHENTICATOR APP & RECOVERY)
   // ---------------------------------------------------------------------------
 
-  // Step 1: Request OTP / Login with Email or Phone & Password
-  if ((pathname === '/api/admin/login' || pathname === '/api/auth/request-otp') && req.method === 'POST') {
+  // Step 1: Request OTP / Login with Email or Phone & Password -> Pre-Auth State
+  if ((pathname === '/api/admin/login' || pathname === '/admin/login' || pathname === '/api/auth/request-otp') && req.method === 'POST') {
     try {
       // IP Rate Limit: Max 30 login attempts per 15 minutes per IP
       if (!checkIpRateLimit(clientIp, 'admin-login', 30, 15 * 60 * 1000)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
+        sendJsonResponse(req, res, 429, { 
           success: false, 
           error: 'Too many login attempts from this network. Please wait a few moments and try again.' 
-        }));
+        });
         return;
       }
 
@@ -584,23 +657,21 @@ const server = http.createServer(async (req, res) => {
       const { username, password } = body;
 
       if (!username || !password) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
+        sendJsonResponse(req, res, 400, { 
           success: false, 
           error: 'Please provide both your registered email/phone and password.' 
-        }));
+        });
         return;
       }
 
       const otpsData = readOtpsData();
 
-      // 1. Check if identifier is currently in temporary lockout
-      if (isLockedOut(username, otpsData)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
+      // 1. Check if identifier or client IP is currently in temporary lockout
+      if (isLockedOut(username, otpsData) || isLockedOut(clientIp, otpsData)) {
+        sendJsonResponse(req, res, 429, { 
           success: false, 
           error: 'Account temporarily locked due to excessive failed attempts. Please try again after 15 minutes.' 
-        }));
+        });
         return;
       }
 
@@ -611,386 +682,540 @@ const server = http.createServer(async (req, res) => {
       const isPassValid = passBuf.length === expBuf.length && crypto.timingSafeEqual(passBuf, expBuf);
 
       if (!isIdentifierValid || !isPassValid) {
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid credentials. Please enter your valid email/phone and password.' 
-        }));
-        return;
-      }
-
-      // Successful credentials: Clear rate limit count for this client IP
-      ipRateLimitStore.delete(`${clientIp}:admin-login`);
-
-      // Check if strict 2FA OTP is explicitly requested/required via environment
-      const is2FaRequired = process.env.REQUIRE_2FA === 'true';
-
-      if (is2FaRequired) {
-        const otpCode = generateSecureOtp();
-        const salt = crypto.randomBytes(16).toString('hex');
-        const otpHash = hashOtp(otpCode, salt);
-        const otpSessionId = crypto.randomBytes(24).toString('hex');
-        const now = Date.now();
-
-        invalidatePreviousOtps(ADMIN_PHONE, 'admin_login', otpsData);
-
-        if (!otpsData.otpSessions) otpsData.otpSessions = {};
-        otpsData.otpSessions[otpSessionId] = {
-          identifier: ADMIN_PHONE,
-          targetEmail: ADMIN_EMAIL,
-          targetPhone: ADMIN_PHONE,
-          otpHash,
-          salt,
-          attempts: 0,
-          maxAttempts: MAX_VERIFY_ATTEMPTS,
-          expiresAt: now + OTP_EXPIRY_MS,
-          resendAvailableAt: now + RESEND_COOLDOWN_MS,
-          purpose: 'admin_login',
-          used: false,
-          createdAt: now
-        };
+        // Increment failed attempt counter for lockout tracking
+        if (!otpsData.lockouts) otpsData.lockouts = {};
+        const failKey = `fail:${username.toLowerCase().trim()}`;
+        otpsData.lockouts[failKey] = otpsData.lockouts[failKey] || { count: 0, firstFail: Date.now() };
+        otpsData.lockouts[failKey].count++;
+        if (otpsData.lockouts[failKey].count >= 5) {
+          otpsData.lockouts[username] = { lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
+          delete otpsData.lockouts[failKey];
+        }
         saveOtpsData(otpsData);
 
-        dispatchOtpNotification(ADMIN_PHONE, ADMIN_EMAIL, otpCode, 'admin_login', otpSessionId);
-
-        const maskedPhone = `+91 ******${ADMIN_PHONE.slice(-4)}`;
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: true,
-          requiresOtp: true,
-          otpSessionId,
-          maskedTarget: maskedPhone,
-          cooldownSeconds: 60,
-          expiresInSeconds: 300,
-          message: 'A 6-digit verification code has been dispatched to your registered mobile number.'
-        }));
+        sendJsonResponse(req, res, 401, { 
+          success: false, 
+          error: 'Invalid credentials. Please enter your valid email/phone and password.' 
+        });
         return;
       }
 
-      // Direct Sign-In (Password Verified): Issue 24-hour admin session
-      const token = createSession(username);
-      const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
-      const cookieHeader = isHttps 
-        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
-        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
+      // Successful password verification: clear login rate limit and failed count
+      ipRateLimitStore.delete(`${clientIp}:admin-login`);
+      if (otpsData.lockouts && otpsData.lockouts[`fail:${username.toLowerCase().trim()}`]) {
+        delete otpsData.lockouts[`fail:${username.toLowerCase().trim()}`];
+      }
 
-      console.log(`[AUTH] Admin signed in successfully: ${username}`);
+      // Check if 2FA is already enabled on this admin account
+      const is2FaEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled && otpsData.admin2fa.totp_secret_encrypted);
 
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieHeader
-      });
-      res.end(JSON.stringify({
-        success: true,
-        authenticated: true,
-        token,
-        username,
-        name: 'Somesh Adigarla',
-        message: 'Admin access granted successfully!'
-      }));
+      // Create temporary pre-authentication session (DO NOT ISSUE FULL SESSION TOKEN YET)
+      const preAuth = totpService.createPreAuthSession(username);
+
+      if (is2FaEnabled) {
+        // Enforce Step 2: TOTP Authenticator code verification
+        sendJsonResponse(req, res, 200, {
+          success: true,
+          requires2Fa: true,
+          requires2fa: true,
+          preAuthSessionId: preAuth.id,
+          account: ADMIN_EMAIL,
+          maskedTarget: `Authenticator App (${ADMIN_EMAIL.replace(/(.{2})(.*)(@.*)/, '$1***$3')})`,
+          message: 'Please enter the current 6-digit verification code from your Authenticator app.'
+        });
+        return;
+      } else {
+        // First-Time Setup Required: generate provisioning URI, QR code, and recovery codes
+        const setupData = await totpService.generateSetupData({ account: ADMIN_EMAIL, issuer: 'Chinnodu Foods' });
+        preAuth.setupSessionId = setupData.setupSessionId;
+        sendJsonResponse(req, res, 200, {
+          success: true,
+          requires2FaSetup: true,
+          requiresSetup: true,
+          preAuthSessionId: preAuth.id,
+          setupSessionId: setupData.setupSessionId,
+          qrCodeDataUrl: setupData.qrCode,
+          manualSecretKey: setupData.manualKey,
+          recoveryCodes: setupData.recoveryCodes,
+          setupData: {
+            setupSessionId: setupData.setupSessionId,
+            qrCode: setupData.qrCode,
+            manualKey: setupData.manualKey,
+            issuer: setupData.issuer,
+            account: setupData.account,
+            recoveryCodes: setupData.recoveryCodes
+          },
+          message: 'First-time setup: Scan this QR code with Google Authenticator, Microsoft Authenticator, or another TOTP app.'
+        });
+        return;
+      }
     } catch (err) {
       console.error('[AUTH LOGIN ERROR]', err.message);
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Authentication request failed.' }));
+      sendJsonResponse(req, res, 500, { success: false, error: 'Authentication request failed.' });
     }
     return;
   }
 
-  // Step 2: Verify 6-Digit OTP and Issue Secure Session Cookie
-  if ((pathname === '/api/admin/verify-otp' || pathname === '/api/auth/verify-otp') && req.method === 'POST') {
+  // Step 2: Verify TOTP Code from Authenticator App -> Issue Authenticated Admin Session
+  if ((pathname === '/api/admin/2fa/verify' || pathname === '/admin/2fa/verify' || pathname === '/api/admin/verify-otp') && req.method === 'POST') {
     try {
-      const body = await parseRequestBody(req);
-      const otpSessionId = body.otpSessionId || body.sessionId;
-      const cleanOtp = String(body.otp || body.otpCode || '').trim().replace(/\D/g, '');
-
-      console.log(`[OTP DEBUG] Verification session received: ${otpSessionId ? otpSessionId.slice(0, 8) : 'null'}`);
-
-      if (!otpSessionId) {
-        console.log(`[OTP DEBUG] Session found: false`);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
+      if (!checkIpRateLimit(clientIp, '2fa-verify', 30, 15 * 60 * 1000)) {
+        sendJsonResponse(req, res, 429, { 
           success: false, 
-          error: 'OTP expired. Please request a new OTP.' 
-        }));
+          error: 'Too many verification attempts. Please wait a few moments and try again.' 
+        });
+        return;
+      }
+
+      const body = await parseRequestBody(req);
+      const preAuthSessionId = body.preAuthSessionId || body.otpSessionId || body.sessionId;
+      const cleanOtp = String(body.totpCode || body.otp || body.otpCode || '').trim().replace(/\D/g, '');
+
+      if (!preAuthSessionId) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Authentication session expired. Please sign in again.'
+        });
+        return;
+      }
+
+      const preAuth = totpService.getPreAuthSession(preAuthSessionId);
+      if (!preAuth) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Authentication session expired. Please sign in again.'
+        });
+        return;
+      }
+
+      // Check max attempts on this preAuth session
+      preAuth.attempts = (preAuth.attempts || 0) + 1;
+      if (preAuth.attempts > preAuth.maxAttempts) {
+        totpService.consumePreAuthSession(preAuthSessionId);
+        const otpsData = readOtpsData();
+        if (!otpsData.lockouts) otpsData.lockouts = {};
+        otpsData.lockouts[preAuth.username] = { lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
+        saveOtpsData(otpsData);
+
+        sendJsonResponse(req, res, 429, {
+          success: false,
+          error: 'Too many failed verification attempts. Account locked for 15 minutes.'
+        });
         return;
       }
 
       if (cleanOtp.length !== 6) {
-        console.log(`[OTP DEBUG] Invalid OTP length: ${cleanOtp.length}`);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid OTP. Please try again.' 
-        }));
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Please enter a valid 6-digit verification code.'
+        });
         return;
       }
 
       const otpsData = readOtpsData();
-      const sessions = otpsData.otpSessions || otpsData.sessions || {};
-      const sessionData = sessions[otpSessionId];
-
-      const sessionFound = !!sessionData && !sessionData.used;
-      console.log(`[OTP DEBUG] Session found: ${sessionFound}`);
-
-      // Check existence and usage flag
-      if (!sessionFound) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'OTP expired. Please request a new OTP.' 
-        }));
+      const encryptedSecret = otpsData.admin2fa?.totp_secret_encrypted;
+      if (!encryptedSecret) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: '2FA is not configured. Please complete first-time setup.'
+        });
         return;
       }
 
-      // Check expiration
-      const sessionExpired = Date.now() > sessionData.expiresAt;
-      console.log(`[OTP DEBUG] Session expired: ${sessionExpired}`);
+      // Verify code on backend using otplib (window: 1)
+      // SECURITY: Never log cleanOtp!
+      const verifyResult = totpService.verifyTotp(encryptedSecret, cleanOtp);
 
-      if (sessionExpired) {
-        if (otpsData.otpSessions) delete otpsData.otpSessions[otpSessionId];
-        if (otpsData.sessions) delete otpsData.sessions[otpSessionId];
-        saveOtpsData(otpsData);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'OTP expired. Please request a new OTP.' 
-        }));
+      if (!verifyResult.success) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: verifyResult.error || 'Invalid or expired verification code. Enter the latest code from your Authenticator app.'
+        });
         return;
       }
 
-      // Check if identifier is currently locked out
-      if (isLockedOut(sessionData.identifier, otpsData)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Account temporarily locked due to excessive failed attempts. Please try again after 15 minutes.' 
-        }));
-        return;
-      }
+      // TOTP Verification Succeeded!
+      // Invalidate the pre-auth session
+      totpService.consumePreAuthSession(preAuthSessionId);
 
-      // Increment attempt counter
-      sessionData.attempts = (sessionData.attempts || 0) + 1;
+      // Regenerate session token (Session Fixation Prevention)
+      const token = createSession(preAuth.username || ADMIN_EMAIL);
+      setSessionCookie(res, req, token);
 
-      // Check max attempts
-      if (sessionData.attempts > sessionData.maxAttempts) {
-        // Apply 15-minute temporary lockout
-        if (!otpsData.lockouts) otpsData.lockouts = {};
-        otpsData.lockouts[sessionData.identifier] = {
-          lockedUntil: Date.now() + LOCKOUT_DURATION_MS,
-          failedAttempts: sessionData.attempts
-        };
-        if (otpsData.otpSessions) delete otpsData.otpSessions[otpSessionId];
-        if (otpsData.sessions) delete otpsData.sessions[otpSessionId];
-        saveOtpsData(otpsData);
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Too many incorrect attempts. Temporary lockout applied for 15 minutes.' 
-        }));
-        return;
-      }
+      console.log(`[AUTH] Admin 2FA verified successfully via Authenticator App: ${preAuth.username}`);
 
-      // Compute hash of submitted code and compare using timingSafeCompare
-      const submittedHash = hashOtp(cleanOtp, sessionData.salt);
-      const isMatch = timingSafeCompare(submittedHash, sessionData.otpHash);
-      console.log(`[OTP DEBUG] OTP comparison: ${isMatch ? 'MATCH' : 'NO_MATCH'}`);
-
-      if (!isMatch) {
-        saveOtpsData(otpsData);
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Invalid OTP. Please try again.' 
-        }));
-        return;
-      }
-
-      // Success!
-      // 1. Mark OTP as used
-      sessionData.used = true;
-      // 2. Delete / Invalidate the OTP session
-      if (otpsData.otpSessions) delete otpsData.otpSessions[otpSessionId];
-      if (otpsData.sessions) delete otpsData.sessions[otpSessionId];
-      // 3. Clear any lockout state
-      if (otpsData.lockouts && otpsData.lockouts[sessionData.identifier]) {
-        delete otpsData.lockouts[sessionData.identifier];
-      }
-      saveOtpsData(otpsData);
-
-      // 4. Create permanent authenticated server session
-      const token = createSession(sessionData.targetEmail || ADMIN_EMAIL);
-
-      // 5. Set secure HttpOnly cookie (adds Secure & SameSite=None on HTTPS for cross-origin admin)
-      const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
-      const cookieHeader = isHttps 
-        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
-        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieHeader
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        authenticated: true,
+        token,
+        username: preAuth.username,
+        name: 'Somesh Adigarla',
+        message: 'Two-factor authentication successful.'
       });
-      res.end(JSON.stringify({ 
-        success: true, 
-        message: 'Two-factor authentication successful.',
-        token
-      }));
     } catch (err) {
-      console.error('[AUTH VERIFY ERROR]', err);
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      console.error('[AUTH 2FA VERIFY ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Authentication verification error.' });
     }
     return;
   }
 
-  // Resend OTP Endpoint
-  if ((pathname === '/api/admin/resend-otp' || pathname === '/api/auth/resend-otp') && req.method === 'POST') {
+  // First-Time Authenticator Setup: Verify Code and Activate 2FA
+  if ((pathname === '/api/admin/2fa/verify-setup' || pathname === '/admin/2fa/verify-setup') && req.method === 'POST') {
     try {
       const body = await parseRequestBody(req);
-      const otpSessionId = body.otpSessionId || body.sessionId;
+      const isAuth = isAuthenticated(req);
+      const preAuth = body.preAuthSessionId ? totpService.getPreAuthSession(body.preAuthSessionId) : null;
+      const setupSessionId = body.setupSessionId || (preAuth && preAuth.setupSessionId);
+      const cleanOtp = String(body.totpCode || body.otp || '').trim().replace(/\D/g, '');
 
-      console.log(`[OTP DEBUG] Resend session received: ${otpSessionId ? otpSessionId.slice(0, 8) : 'null'}`);
-
-      if (!otpSessionId) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Session not found or expired. Please sign in again.' 
-        }));
+      if (!isAuth && !preAuth) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Session expired. Please restart the setup process.'
+        });
         return;
       }
 
+      if (!setupSessionId || !cleanOtp) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Setup session and 6-digit code are required.'
+        });
+        return;
+      }
+
+      // Verify the setup code
+      const result = totpService.verifySetup(setupSessionId, cleanOtp);
+      if (!result.success) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: result.error || 'Invalid verification code. Please check your authenticator app.'
+        });
+        return;
+      }
+
+      // Mark 2FA enabled in persistent store
       const otpsData = readOtpsData();
-      const sessions = otpsData.otpSessions || otpsData.sessions || {};
-      const sessionData = sessions[otpSessionId];
-
-      if (!sessionData) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Session not found or expired. Please sign in again.' 
-        }));
-        return;
-      }
-
-      if (sessionData.used) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'OTP has already been used. Please sign in again.' }));
-        return;
-      }
-
-      const now = Date.now();
-
-      // Check resend cooldown timer (60 seconds)
-      if (now < sessionData.resendAvailableAt) {
-        const remainingSeconds = Math.ceil((sessionData.resendAvailableAt - now) / 1000);
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: `Please wait ${remainingSeconds} seconds before requesting a new OTP.` 
-        }));
-        return;
-      }
-
-      // Check rate limit on identifier
-      if (isRateLimited(sessionData.identifier, otpsData)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: false, 
-          error: 'Too many OTP requests. Please wait a few minutes before trying again.' 
-        }));
-        return;
-      }
-
-      // Generate fresh CSPRNG OTP
-      const newOtpCode = generateSecureOtp();
-      const newSalt = crypto.randomBytes(16).toString('hex');
-      const newHash = hashOtp(newOtpCode, newSalt);
-
-      sessionData.otpHash = newHash;
-      sessionData.salt = newSalt;
-      sessionData.expiresAt = now + OTP_EXPIRY_MS;
-      sessionData.resendAvailableAt = now + RESEND_COOLDOWN_MS;
-      sessionData.attempts = 0;
-
+      otpsData.admin2fa = {
+        two_factor_enabled: true,
+        totp_secret_encrypted: result.record.totp_secret_encrypted,
+        two_factor_confirmed_at: result.record.two_factor_confirmed_at,
+        recovery_codes_hashes: result.record.recovery_codes_hashes
+      };
       saveOtpsData(otpsData);
 
-      // Dispatch to delivery channel
-      dispatchOtpNotification(sessionData.targetPhone, sessionData.targetEmail, newOtpCode, sessionData.purpose, otpSessionId);
+      // Async MongoDB sync
+      if (mongoManager.isConnected && mongoManager.db) {
+        mongoManager.db.collection('admin_auth').updateOne(
+          { _id: 'admin_2fa_config' },
+          { $set: otpsData.admin2fa },
+          { upsert: true }
+        ).catch(e => console.error('[MONGO 2FA SYNC NOTICE]', e.message));
+      }
 
-      console.log(`[AUTH] Fresh 2FA OTP re-dispatched for session ${otpSessionId.slice(0, 8)}...`);
+      console.log('[AUTH] Admin 2FA Authenticator App successfully configured and enabled!');
 
-      // Security: NEVER expose OTP in response
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
+      // If user came from pre-auth flow, issue authenticated session token and cookie now!
+      let token = null;
+      if (preAuth) {
+        totpService.consumePreAuthSession(preAuth.id);
+        token = createSession(preAuth.username || ADMIN_EMAIL);
+        setSessionCookie(res, req, token);
+      }
+
+      sendJsonResponse(req, res, 200, {
         success: true,
-        otpSessionId,
-        cooldownSeconds: 60,
-        expiresInSeconds: 300,
-        message: 'A fresh verification code has been dispatched to your registered mobile number.'
-      }));
+        authenticated: Boolean(token || isAuth),
+        token: token || null,
+        message: 'Authenticator successfully configured.'
+      });
     } catch (err) {
-      console.error('[AUTH RESEND ERROR]', err);
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      console.error('[AUTH SETUP VERIFY ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Setup verification error.' });
     }
     return;
   }
 
-  // Developer Helper: Strictly Disabled in Production (Requires explicit ALLOW_DEV_OTP=true on loopback)
-  if ((pathname === '/api/admin/dev-dispatched-otp' || pathname === '/api/auth/dev-dispatched-otp') && req.method === 'GET') {
+  // Request / Initiate 2FA Setup (Generate Secret, Provisioning URI, QR Code, Recovery Codes)
+  if ((pathname === '/api/admin/2fa/setup' || pathname === '/admin/2fa/setup') && req.method === 'POST') {
     try {
-      const isExplicitDev = process.env.NODE_ENV === 'development' && process.env.ALLOW_DEV_OTP === 'true';
-      const clientIp = req.socket.remoteAddress || '';
-      const isStrictLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+      const body = await parseRequestBody(req).catch(() => ({}));
+      const preAuthSessionId = body.preAuthSessionId;
+      const isAuth = isAuthenticated(req);
+      const preAuth = preAuthSessionId ? totpService.getPreAuthSession(preAuthSessionId) : null;
 
-      if (!isExplicitDev || !isStrictLoopback) {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Endpoint not found' }));
+      if (!isAuth && !preAuth) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Authentication or pre-authentication session required to configure 2FA.'
+        });
         return;
       }
-      if (fs.existsSync(OTP_DISPATCH_FILE)) {
-        const data = JSON.parse(fs.readFileSync(OTP_DISPATCH_FILE, 'utf8'));
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ 
-          success: true, 
-          code: data.code, 
-          recipient: data.recipient, 
-          dispatchedAt: data.dispatchedAt,
-          otpSessionId: data.otpSessionId
-        }));
-        return;
-      }
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'No dispatched OTP found' }));
+
+      const setupData = await totpService.generateSetupData({ account: ADMIN_EMAIL, issuer: 'Chinnodu Foods' });
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        setupSessionId: setupData.setupSessionId,
+        qrCode: setupData.qrCode,
+        manualKey: setupData.manualKey,
+        issuer: setupData.issuer,
+        account: setupData.account,
+        recoveryCodes: setupData.recoveryCodes
+      });
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: 'Internal error' }));
+      console.error('[AUTH 2FA SETUP ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Failed to generate 2FA setup data.' });
+    }
+    return;
+  }
+
+  // Emergency Recovery Code Login (Lost Phone / Inaccessible Authenticator App)
+  if ((pathname === '/api/admin/2fa/recovery' || pathname === '/admin/2fa/recovery') && req.method === 'POST') {
+    try {
+      if (!checkIpRateLimit(clientIp, '2fa-recovery', 10, 15 * 60 * 1000)) {
+        sendJsonResponse(req, res, 429, { 
+          success: false, 
+          error: 'Too many recovery attempts. Please wait 15 minutes.' 
+        });
+        return;
+      }
+
+      const body = await parseRequestBody(req);
+      const preAuthSessionId = body.preAuthSessionId;
+      const submittedCode = String(body.recoveryCode || '').trim();
+
+      if (!preAuthSessionId) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Authentication session expired. Please sign in again.'
+        });
+        return;
+      }
+
+      const preAuth = totpService.getPreAuthSession(preAuthSessionId);
+      if (!preAuth) {
+        sendJsonResponse(req, res, 400, {
+          success: false,
+          error: 'Authentication session expired. Please sign in again.'
+        });
+        return;
+      }
+
+      preAuth.attempts = (preAuth.attempts || 0) + 1;
+      if (preAuth.attempts > preAuth.maxAttempts) {
+        totpService.consumePreAuthSession(preAuthSessionId);
+        sendJsonResponse(req, res, 429, {
+          success: false,
+          error: 'Too many failed recovery attempts. Account locked for 15 minutes.'
+        });
+        return;
+      }
+
+      const otpsData = readOtpsData();
+      const recResult = totpService.verifyRecoveryCode(otpsData.admin2fa?.recovery_codes_hashes, submittedCode);
+
+      if (!recResult.success) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: recResult.error || 'Invalid recovery code. Each code can only be used once.'
+        });
+        return;
+      }
+
+      // Recovery code matched and consumed! Save DB
+      saveOtpsData(otpsData);
+      if (mongoManager.isConnected && mongoManager.db) {
+        mongoManager.db.collection('admin_auth').updateOne(
+          { _id: 'admin_2fa_config' },
+          { $set: otpsData.admin2fa },
+          { upsert: true }
+        ).catch(e => console.error('[MONGO 2FA SYNC NOTICE]', e.message));
+      }
+
+      totpService.consumePreAuthSession(preAuthSessionId);
+
+      // Create session and set cookie
+      const token = createSession(preAuth.username || ADMIN_EMAIL);
+      setSessionCookie(res, req, token);
+
+      console.log(`[AUTH] Admin signed in using Emergency Recovery Code (${recResult.codeId}). Remaining: ${recResult.remaining}`);
+
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        authenticated: true,
+        token,
+        remainingCodes: recResult.remaining,
+        remainingCodesCount: recResult.remaining,
+        message: 'Recovery code accepted. Access granted.'
+      });
+    } catch (err) {
+      console.error('[AUTH RECOVERY ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Recovery verification error.' });
+    }
+    return;
+  }
+
+  // Disable 2FA (Requires Active Admin Session, Current Password, and Valid TOTP)
+  if ((pathname === '/api/admin/2fa/disable' || pathname === '/admin/2fa/disable') && req.method === 'POST') {
+    if (!isAuthenticated(req)) {
+      sendJsonResponse(req, res, 401, { success: false, error: 'Unauthorized.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const { password, totpCode } = body;
+
+      // Verify password
+      const passBuf = Buffer.from(String(password || ''));
+      const expBuf = Buffer.from(String(ADMIN_PASSWORD));
+      if (passBuf.length !== expBuf.length || !crypto.timingSafeEqual(passBuf, expBuf)) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Incorrect admin password. Cannot disable 2FA without current password verification.'
+        });
+        return;
+      }
+
+      const otpsData = readOtpsData();
+      // Verify TOTP code
+      const cleanOtp = String(totpCode || '').trim().replace(/\D/g, '');
+      const codeCheck = totpService.verifyTotp(otpsData.admin2fa?.totp_secret_encrypted, cleanOtp);
+      if (!codeCheck.success) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Invalid authenticator code. Cannot disable 2FA without valid TOTP verification.'
+        });
+        return;
+      }
+
+      otpsData.admin2fa = {
+        two_factor_enabled: false,
+        totp_secret_encrypted: null,
+        two_factor_confirmed_at: null,
+        recovery_codes_hashes: []
+      };
+      saveOtpsData(otpsData);
+
+      if (mongoManager.isConnected && mongoManager.db) {
+        mongoManager.db.collection('admin_auth').updateOne(
+          { _id: 'admin_2fa_config' },
+          { $set: otpsData.admin2fa },
+          { upsert: true }
+        ).catch(e => console.error('[MONGO 2FA SYNC NOTICE]', e.message));
+      }
+
+      console.log('[AUTH] Admin 2FA has been disabled with password & TOTP confirmation.');
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        message: 'Two-factor authentication has been disabled.'
+      });
+    } catch (err) {
+      console.error('[AUTH 2FA DISABLE ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Failed to disable 2FA.' });
+    }
+    return;
+  }
+
+  // Get 2FA Status & Recovery Codes Count (Admin Only - Never exposes secrets)
+  if ((pathname === '/api/admin/2fa/status' || pathname === '/admin/2fa/status') && req.method === 'GET') {
+    if (!isAuthenticated(req)) {
+      sendJsonResponse(req, res, 401, { success: false, error: 'Unauthorized.' });
+      return;
+    }
+    const otpsData = readOtpsData();
+    const isEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled);
+    const hashes = otpsData.admin2fa?.recovery_codes_hashes || [];
+    const remaining = hashes.filter(r => !r.used).length;
+
+    sendJsonResponse(req, res, 200, {
+      success: true,
+      enabled: isEnabled,
+      two_factor_enabled: isEnabled,
+      confirmedAt: otpsData.admin2fa?.two_factor_confirmed_at || null,
+      two_factor_confirmed_at: otpsData.admin2fa?.two_factor_confirmed_at || null,
+      recoveryCodesTotal: hashes.length,
+      recoveryCodesRemaining: remaining,
+      totalRecoveryCodes: hashes.length,
+      remainingRecoveryCodes: remaining,
+      issuer: 'Chinnodu Foods',
+      account: ADMIN_EMAIL
+    });
+
+    return;
+  }
+
+  // Regenerate Recovery Codes (Requires Active Admin Session & Current TOTP)
+  if ((pathname === '/api/admin/2fa/regenerate-recovery' || pathname === '/admin/2fa/regenerate-recovery') && req.method === 'POST') {
+    if (!isAuthenticated(req)) {
+      sendJsonResponse(req, res, 401, { success: false, error: 'Unauthorized.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const cleanOtp = String(body.totpCode || '').trim().replace(/\D/g, '');
+
+      const otpsData = readOtpsData();
+      if (!otpsData.admin2fa?.two_factor_enabled) {
+        sendJsonResponse(req, res, 400, { success: false, error: '2FA is not enabled.' });
+        return;
+      }
+
+      const verifyCheck = totpService.verifyTotp(otpsData.admin2fa.totp_secret_encrypted, cleanOtp);
+      if (!verifyCheck.success) {
+        sendJsonResponse(req, res, 401, {
+          success: false,
+          error: 'Invalid authenticator code. Enter the latest code from your Authenticator app.'
+        });
+        return;
+      }
+
+      const fresh = totpService.regenerateRecoveryCodes();
+      otpsData.admin2fa.recovery_codes_hashes = fresh.hashes;
+      saveOtpsData(otpsData);
+
+      if (mongoManager.isConnected && mongoManager.db) {
+        mongoManager.db.collection('admin_auth').updateOne(
+          { _id: 'admin_2fa_config' },
+          { $set: { recovery_codes_hashes: fresh.hashes } }
+        ).catch(e => console.error('[MONGO 2FA SYNC NOTICE]', e.message));
+      }
+
+      console.log('[AUTH] Admin generated 8 fresh emergency recovery codes.');
+
+      sendJsonResponse(req, res, 200, {
+        success: true,
+        recoveryCodes: fresh.recoveryCodes,
+        message: 'Fresh recovery codes generated successfully.'
+      });
+    } catch (err) {
+      console.error('[AUTH REGENERATE RECOVERY ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Failed to regenerate recovery codes.' });
     }
     return;
   }
 
   // Check Auth Status
-  if ((pathname === '/api/admin/check-auth' || pathname === '/api/auth/check-auth') && req.method === 'GET') {
+  if ((pathname === '/api/admin/check-auth' || pathname === '/admin/check-auth' || pathname === '/api/auth/check-auth') && req.method === 'GET') {
     if (isAuthenticated(req)) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
+      const otpsData = readOtpsData();
+      const is2FaEnabled = Boolean(otpsData.admin2fa && otpsData.admin2fa.two_factor_enabled);
+      sendJsonResponse(req, res, 200, { 
         success: true, 
         authenticated: true, 
         name: 'Somesh Adigarla',
         adminEmail: ADMIN_EMAIL, 
         adminPhone: `+91 ${ADMIN_PHONE}`,
-        username: ADMIN_EMAIL 
-      }));
+        username: ADMIN_EMAIL,
+        twoFactorEnabled: is2FaEnabled
+      });
     } else {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, authenticated: false }));
+      sendJsonResponse(req, res, 401, { success: false, authenticated: false });
     }
     return;
   }
 
   // Logout
-  if ((pathname === '/api/admin/logout' || pathname === '/api/auth/logout') && req.method === 'POST') {
+  if ((pathname === '/api/admin/logout' || pathname === '/admin/logout' || pathname === '/api/auth/logout') && req.method === 'POST') {
     const cookies = parseCookies(req);
     if (cookies.session_token) {
       const otpsData = readOtpsData();
@@ -1012,7 +1237,7 @@ const server = http.createServer(async (req, res) => {
   // Legacy PIN endpoint redirects to login requirement
   if (pathname === '/api/admin/verify' && req.method === 'POST') {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: false, error: 'PIN login deprecated. Please use email/phone with password and OTP verification.' }));
+    res.end(JSON.stringify({ success: false, error: 'PIN login deprecated. Please use email/phone with password and Authenticator App 2FA.' }));
     return;
   }
 
@@ -2028,3 +2253,11 @@ server.listen(PORT, () => {
   console.log(`  💳 Policy: 100% Prepaid UPI (No Cash on Delivery)`);
   console.log(`=======================================================`);
 });
+
+module.exports = {
+  server,
+  totpService,
+  readOtpsData,
+  saveOtpsData
+};
+

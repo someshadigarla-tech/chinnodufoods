@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "test": "node test-2fa-e2e.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -18,6 +19,8 @@
   "author": "Chinnodu Foods",
   "license": "ISC",
   "dependencies": {
-    "mongodb": "^7.6.0"
+    "mongodb": "^7.6.0",
+    "otplib": "^13.5.0",
+    "qrcode": "^1.5.4"
   }
 }

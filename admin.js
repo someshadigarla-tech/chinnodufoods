@@ -2,9 +2,16 @@
     // Universal Cloud Backend Routing & Cross-Origin Admin Authentication
     // =============================================================================
     const BACKEND_URL = "https://chinnodufoods.onrender.com";
-    const API_BASE = (window.location.hostname.includes("github.io") || window.location.protocol === "file:")
-      ? BACKEND_URL
-      : "";
+    const LOCAL_URL = "http://localhost:8080";
+    let API_BASE = "";
+    if (window.location.protocol === "file:") {
+      API_BASE = LOCAL_URL;
+    } else if (window.location.hostname.includes("github.io") || window.location.hostname.includes("chinnodufoods.com")) {
+      API_BASE = BACKEND_URL;
+    } else if (window.location.port && window.location.port !== "8080" && window.location.port !== "8089") {
+      API_BASE = LOCAL_URL;
+    }
+
 
     function getAdminAuthHeaders(customHeaders = {}) {
       const token = localStorage.getItem("admin_session_token");
@@ -84,149 +91,14 @@
       'Other': ''
     };
 
-    // 2FA OTP State
-    let CURRENT_OTP_SESSION_ID = null;
-    let RESEND_TIMER_INTERVAL = null;
-    let RESEND_SECONDS = 60;
-    let OTP_EXPIRY_INTERVAL = null;
-    let OTP_EXPIRY_SECONDS = 300;
-    let IS_VERIFYING_OTP = false;
-
-    // Real-Time OTP Helpers
-    function updateOtpFilledState() {
-      for (let j = 0; j < 6; j++) {
-        const b = document.getElementById(`otp-digit-${j}`);
-        if (!b) continue;
-        if (b.value && b.value.trim() !== "") {
-          b.classList.add("filled");
-        } else {
-          b.classList.remove("filled");
-        }
-      }
-    }
-
-    function getEnteredOtpCode() {
-      let code = "";
-      for (let j = 0; j < 6; j++) {
-        const b = document.getElementById(`otp-digit-${j}`);
-        if (b) code += (b.value || "").trim();
-      }
-      return code;
-    }
-
-    function checkAndAutoVerifyOtp() {
-      const code = getEnteredOtpCode();
-      if (code.length === 6 && /^\d{6}$/.test(code) && !IS_VERIFYING_OTP) {
-        handleVerifyOtp();
-      }
-    }
-
-    function startOtpExpiryCountdown(seconds = 300) {
-      if (OTP_EXPIRY_INTERVAL) clearInterval(OTP_EXPIRY_INTERVAL);
-      OTP_EXPIRY_SECONDS = seconds;
-      const timerSpan = document.getElementById("otp-expiry-timer");
-
-      const updateDisplay = () => {
-        if (!timerSpan) return;
-        const mins = Math.floor(OTP_EXPIRY_SECONDS / 60);
-        const secs = OTP_EXPIRY_SECONDS % 60;
-        timerSpan.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        if (OTP_EXPIRY_SECONDS <= 60) {
-          timerSpan.style.color = "#DC2626";
-        } else {
-          timerSpan.style.color = "var(--primary-maroon)";
-        }
-      };
-
-      updateDisplay();
-
-      OTP_EXPIRY_INTERVAL = setInterval(() => {
-        OTP_EXPIRY_SECONDS--;
-        if (OTP_EXPIRY_SECONDS <= 0) {
-          clearInterval(OTP_EXPIRY_INTERVAL);
-          if (timerSpan) {
-            timerSpan.textContent = "00:00 (Expired)";
-            timerSpan.style.color = "#DC2626";
-          }
-          const errBanner = document.getElementById("otp-error-banner");
-          if (errBanner) {
-            errBanner.textContent = "OTP expired. Please request a new OTP.";
-            errBanner.style.display = "block";
-          }
-        } else {
-          updateDisplay();
-        }
-      }, 1000);
-    }
-
-    // Developer Helper: Simulated OTP Delivery for Localhost
-    let LAST_DEV_OTP_CODE = null;
-
-    async function loadDevOtpPreview() {
-      try {
-        const res = await fetch("/api/admin/dev-dispatched-otp");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.code) {
-            LAST_DEV_OTP_CODE = data.code;
-            const previewBox = document.getElementById("otp-dev-preview");
-            const codeDisplay = document.getElementById("dev-otp-code-display");
-            if (previewBox && codeDisplay) {
-              codeDisplay.textContent = data.code;
-              previewBox.style.display = "block";
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Could not fetch dev OTP preview:", e);
-      }
-    }
-
-    function autoFillDevOtp() {
-      if (!LAST_DEV_OTP_CODE || LAST_DEV_OTP_CODE.length !== 6) return;
-      for (let j = 0; j < 6; j++) {
-        const box = document.getElementById(`otp-digit-${j}`);
-        if (box) box.value = LAST_DEV_OTP_CODE[j] || "";
-      }
-      updateOtpFilledState();
-      checkAndAutoVerifyOtp();
-    }
-
-    // Check Authentication on Page Load via Server-side Session
-    document.addEventListener("DOMContentLoaded", async () => {
-      setupOtpInputHandlers();
-
-      const hasSavedToken = Boolean(localStorage.getItem("admin_session_token"));
-
-      // If user has saved session token, show dashboard provisionally while verifying with backend
-      if (hasSavedToken) {
-        showDashboard();
-      } else {
-        showLoginScreen();
-      }
-
-      // Verify token/session against live backend
-      try {
-        const authRes = await fetch("/api/admin/check-auth");
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          if (authData.authenticated) {
-            if (!hasSavedToken) {
-              showDashboard();
-            }
-            return;
-          }
-        }
-        // If check-auth returned 401 or not authenticated
-        localStorage.removeItem("admin_session_token");
-        showLoginScreen(hasSavedToken ? "Session expired. Please sign in." : "");
-      } catch (err) {
-        console.warn("Live session check notice:", err);
-        if (!hasSavedToken) {
-          showLoginScreen();
-        }
-      }
-    });
+    // =========================================================================
+    // 🛡️ SECURE 2FA TOTP AUTHENTICATOR APP & RECOVERY STATE
+    // =========================================================================
+    let PRE_AUTH_SESSION_ID = null;
+    let SETUP_PRE_AUTH_SESSION_ID = null;
+    let IS_VERIFYING_TOTP = false;
+    let CURRENT_SETUP_RECOVERY_CODES = [];
+    let CURRENT_MODAL_RECOVERY_CODES = [];
 
     // Helper: Toggle password show/hide with embedded Eye SVG icon
     function togglePasswordVisibility() {
@@ -256,11 +128,169 @@
       }
     }
 
-    // Step 1: Handle Login with Email or Phone & Password -> Triggers 2FA OTP
+    // Helper: Update filled state styling for 6-digit input grids
+    function updateDigitGridFilledState(prefix, count = 6) {
+      for (let j = 0; j < count; j++) {
+        const box = document.getElementById(`${prefix}-digit-${j}`);
+        if (!box) continue;
+        if (box.value && box.value.trim() !== "") {
+          box.classList.add("filled");
+        } else {
+          box.classList.remove("filled");
+        }
+      }
+    }
+
+    // Helper: Collect entered code from digit grid
+    function getEnteredDigitCode(prefix, count = 6) {
+      let code = "";
+      for (let j = 0; j < count; j++) {
+        const box = document.getElementById(`${prefix}-digit-${j}`);
+        if (box) code += (box.value || "").trim();
+      }
+      return code;
+    }
+
+    // Helper: Clear digit grid and refocus first box
+    function clearDigitGrid(prefix, count = 6) {
+      for (let j = 0; j < count; j++) {
+        const box = document.getElementById(`${prefix}-digit-${j}`);
+        if (box) box.value = "";
+      }
+      updateDigitGridFilledState(prefix, count);
+      const first = document.getElementById(`${prefix}-digit-0`);
+      if (first) first.focus();
+    }
+
+    // Generic 6-Digit Grid Setup (Auto-advance, backspace jump, paste, auto-verify)
+    function setupDigitGrid(prefix, count = 6, onComplete, errorBannerId) {
+      for (let i = 0; i < count; i++) {
+        const input = document.getElementById(`${prefix}-digit-${i}`);
+        if (!input) continue;
+
+        input.addEventListener("focus", () => {
+          input.select();
+        });
+
+        input.addEventListener("keydown", (e) => {
+          if (errorBannerId) {
+            const errBanner = document.getElementById(errorBannerId);
+            if (errBanner) errBanner.style.display = "none";
+          }
+
+          if (/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            input.value = e.key;
+            updateDigitGridFilledState(prefix, count);
+
+            if (i < count - 1) {
+              const next = document.getElementById(`${prefix}-digit-${i + 1}`);
+              if (next) {
+                next.focus();
+                next.select();
+              }
+            }
+            const fullCode = getEnteredDigitCode(prefix, count);
+            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
+              onComplete();
+            }
+            return;
+          }
+
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            if (input.value) {
+              input.value = "";
+              updateDigitGridFilledState(prefix, count);
+            } else if (i > 0) {
+              const prev = document.getElementById(`${prefix}-digit-${i - 1}`);
+              if (prev) {
+                prev.value = "";
+                updateDigitGridFilledState(prefix, count);
+                prev.focus();
+              }
+            }
+            return;
+          }
+
+          if (e.key === "ArrowLeft" && i > 0) {
+            e.preventDefault();
+            const prev = document.getElementById(`${prefix}-digit-${i - 1}`);
+            if (prev) {
+              prev.focus();
+              prev.select();
+            }
+          } else if (e.key === "ArrowRight" && i < count - 1) {
+            e.preventDefault();
+            const next = document.getElementById(`${prefix}-digit-${i + 1}`);
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+        });
+
+        input.addEventListener("input", () => {
+          const raw = input.value.replace(/\D/g, "");
+          if (raw.length > 1) {
+            for (let j = 0; j < count; j++) {
+              const box = document.getElementById(`${prefix}-digit-${j}`);
+              if (box) box.value = raw[j] || "";
+            }
+            updateDigitGridFilledState(prefix, count);
+            const focusIdx = Math.min(raw.length, count - 1);
+            const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
+            if (focusEl) focusEl.focus();
+            const fullCode = getEnteredDigitCode(prefix, count);
+            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
+              onComplete();
+            }
+            return;
+          }
+
+          input.value = raw.slice(-1);
+          updateDigitGridFilledState(prefix, count);
+          if (raw && i < count - 1) {
+            const next = document.getElementById(`${prefix}-digit-${i + 1}`);
+            if (next) {
+              next.focus();
+              next.select();
+            }
+          }
+          const fullCode = getEnteredDigitCode(prefix, count);
+          if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
+            onComplete();
+          }
+        });
+
+        input.addEventListener("paste", (e) => {
+          e.preventDefault();
+          const pasteData = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "");
+          if (pasteData.length > 0) {
+            for (let j = 0; j < count; j++) {
+              const box = document.getElementById(`${prefix}-digit-${j}`);
+              if (box) box.value = pasteData[j] || "";
+            }
+            updateDigitGridFilledState(prefix, count);
+            const focusIdx = Math.min(pasteData.length, count - 1);
+            const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
+            if (focusEl) focusEl.focus();
+            const fullCode = getEnteredDigitCode(prefix, count);
+            if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
+              onComplete();
+            }
+          }
+        });
+      }
+    }
+
+    // Step 1: Admin Login Credentials Submission
     async function handleAdminLogin(e) {
       if (e && e.preventDefault) e.preventDefault();
-      const username = document.getElementById("admin-username-input").value.trim();
-      const password = document.getElementById("admin-password-input").value;
+      const usernameInput = document.getElementById("admin-username-input");
+      const passwordInput = document.getElementById("admin-password-input");
+      const username = usernameInput ? usernameInput.value.trim() : "";
+      const password = passwordInput ? passwordInput.value : "";
       if (!username || !password) return;
 
       const submitBtn = document.getElementById("btn-login-submit");
@@ -268,15 +298,13 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = "<span>Checking Credentials...</span>";
 
-      // Clear any obsolete token from previous sessions
-      localStorage.removeItem("admin_session_token");
+      const errBanner = document.getElementById("login-error-banner");
+      if (errBanner) {
+        errBanner.style.display = "none";
+        errBanner.textContent = "";
+      }
 
-      const slowTimer = setTimeout(() => {
-        if (submitBtn.disabled) {
-          submitBtn.innerHTML = "<span>Waking Up Server...</span>";
-          showToast("⏳ Connecting to cloud kitchen backend (waking up instance)...");
-        }
-      }, 3500);
+      localStorage.removeItem("admin_session_token");
 
       try {
         const res = await fetch("/api/admin/login", {
@@ -285,118 +313,136 @@
           credentials: "include",
           body: JSON.stringify({ username, password })
         });
-        if (res.status === 404) {
-          throw new Error("API not present on static host");
-        }
         const data = await res.json();
 
         if (res.ok && data.success) {
-          if (data.token) {
-            localStorage.setItem("admin_session_token", data.token);
+          // Case 1: First-time setup required
+          if (data.requires2FaSetup) {
+            SETUP_PRE_AUTH_SESSION_ID = data.preAuthSessionId;
+            CURRENT_SETUP_RECOVERY_CODES = data.recoveryCodes || [];
+            
+            // Set QR code image
+            const qrImg = document.getElementById("setup-qr-image");
+            if (qrImg && data.qrCodeDataUrl) {
+              qrImg.src = data.qrCodeDataUrl;
+            }
+
+            // Set manual key text
+            const keyText = document.getElementById("setup-manual-key-text");
+            if (keyText && data.manualSecretKey) {
+              keyText.textContent = data.manualSecretKey;
+            }
+
+            // Render 8 recovery codes
+            const codesGrid = document.getElementById("setup-recovery-codes-grid");
+            if (codesGrid && CURRENT_SETUP_RECOVERY_CODES.length) {
+              codesGrid.innerHTML = CURRENT_SETUP_RECOVERY_CODES.map(code => 
+                `<div class="recovery-code-pill">${code}</div>`
+              ).join("");
+            }
+
+            // Show setup screen
+            document.getElementById("login-step-1").style.display = "none";
+            document.getElementById("login-step-2").style.display = "none";
+            document.getElementById("login-step-recovery").style.display = "none";
+            document.getElementById("login-step-setup").style.display = "block";
+            clearDigitGrid("setup", 6);
+            showToast("📲 Scan the QR code with your Authenticator app.");
+            return;
           }
+
+          // Case 2: 2FA Active -> Authenticator verification required
+          if (data.requires2Fa) {
+            PRE_AUTH_SESSION_ID = data.preAuthSessionId;
+            const accountDisplay = document.getElementById("totp-account-display");
+            if (accountDisplay && data.account) {
+              accountDisplay.textContent = `Authenticator App (${data.account})`;
+            }
+
+            document.getElementById("login-step-1").style.display = "none";
+            document.getElementById("login-step-setup").style.display = "none";
+            document.getElementById("login-step-recovery").style.display = "none";
+            document.getElementById("login-step-2").style.display = "block";
+            clearDigitGrid("totp", 6);
+            showToast("🔐 Enter the 6-digit code from your Authenticator app.");
+            return;
+          }
+
+          // Case 3: Direct authenticated access (only if 2FA disabled on server)
           if (data.authenticated) {
+            if (data.token) {
+              localStorage.setItem("admin_session_token", data.token);
+            }
             showToast("🎉 Welcome Somesh Garu! Access granted.");
             showDashboard();
             return;
           }
-
-          if (data.requiresOtp) {
-            CURRENT_OTP_SESSION_ID = data.otpSessionId;
-            sessionStorage.setItem("admin_otp_session_id", data.otpSessionId);
-
-            // Switch to Step 2: OTP Verification
-            document.getElementById("login-step-1").style.display = "none";
-            document.getElementById("login-step-2").style.display = "block";
-
-            // Update target display (masked for security)
-            if (data.maskedTarget) {
-              document.getElementById("otp-phone-display").textContent = data.maskedTarget;
-            }
-
-            // Clear any previous error banner
-            const errBanner = document.getElementById("otp-error-banner");
-            if (errBanner) {
-              errBanner.style.display = "none";
-              errBanner.textContent = "";
-            }
-
-            // Clear digit boxes & focus first digit
-            for (let i = 0; i < 6; i++) {
-              const box = document.getElementById(`otp-digit-${i}`);
-              if (box) box.value = "";
-            }
-            updateOtpFilledState();
-            const firstBox = document.getElementById("otp-digit-0");
-            if (firstBox) firstBox.focus();
-
-            startResendCountdown(data.cooldownSeconds || 60);
-            startOtpExpiryCountdown(data.expiresInSeconds || 300);
-            loadDevOtpPreview();
-            showToast(`📲 Verification code dispatched.`);
-            return;
-          }
         } else {
-          showToast("❌ " + (data.error || "Invalid credentials. Please verify your email/phone and password."));
-          document.getElementById("admin-password-input").value = "";
-          document.getElementById("admin-password-input").focus();
+          const errMsg = data.error || "Invalid username or password.";
+          if (errBanner) {
+            errBanner.textContent = errMsg;
+            errBanner.style.display = "block";
+          }
+          showToast("❌ " + errMsg);
+          if (passwordInput) {
+            passwordInput.value = "";
+            passwordInput.focus();
+          }
         }
       } catch (err) {
         console.error("Login communication error:", err);
-        showToast("❌ Unable to connect to backend server. If Render was sleeping, please retry in 5 seconds.");
+        showToast("❌ Unable to connect to backend server. Please retry in a few seconds.");
       } finally {
-        clearTimeout(slowTimer);
         submitBtn.disabled = false;
         submitBtn.innerHTML = origText;
       }
     }
 
-    // Step 2: Verify 6-digit OTP (Real-time auto-verify or button click)
-    async function handleVerifyOtp(e) {
+    // Step 2: Verify 6-digit TOTP Code
+    async function handleVerifyTotp(e) {
       if (e && e.preventDefault) e.preventDefault();
-      if (IS_VERIFYING_OTP) return;
-      
-      const otpCode = getEnteredOtpCode();
-      const errBanner = document.getElementById("otp-error-banner");
+      if (IS_VERIFYING_TOTP) return;
 
-      if (otpCode.length < 6 || !/^\d{6}$/.test(otpCode)) {
+      const code = getEnteredDigitCode("totp", 6);
+      const errBanner = document.getElementById("totp-error-banner");
+
+      if (code.length < 6 || !/^\d{6}$/.test(code)) {
         if (errBanner) {
-          errBanner.textContent = "Invalid OTP. Please try again.";
+          errBanner.textContent = "Please enter all 6 numeric digits from your Authenticator app.";
           errBanner.style.display = "block";
         }
         showToast("⚠️ Please enter all 6 numeric digits.");
-        const emptyIdx = [0,1,2,3,4,5].find(i => !document.getElementById(`otp-digit-${i}`).value);
-        if (emptyIdx !== undefined) document.getElementById(`otp-digit-${emptyIdx}`).focus();
+        const emptyIdx = [0,1,2,3,4,5].find(i => !document.getElementById(`totp-digit-${i}`).value);
+        if (emptyIdx !== undefined) document.getElementById(`totp-digit-${emptyIdx}`).focus();
         return;
       }
 
-      const sessionId = CURRENT_OTP_SESSION_ID || sessionStorage.getItem("admin_otp_session_id");
-      if (!sessionId) {
+      if (!PRE_AUTH_SESSION_ID) {
         if (errBanner) {
-          errBanner.textContent = "OTP expired. Please request a new OTP.";
+          errBanner.textContent = "Verification session expired. Please sign in again.";
           errBanner.style.display = "block";
         }
-        showToast("⚠️ OTP expired. Please request a new OTP.");
+        showToast("⚠️ Session expired. Please sign in again.");
+        setTimeout(() => backToLoginStep1(), 1500);
         return;
       }
 
       if (errBanner) errBanner.style.display = "none";
 
-      IS_VERIFYING_OTP = true;
-      const verifyBtn = document.getElementById("btn-otp-submit");
+      IS_VERIFYING_TOTP = true;
+      const verifyBtn = document.getElementById("btn-totp-submit");
       const origText = verifyBtn.innerHTML;
       verifyBtn.disabled = true;
-      verifyBtn.innerHTML = "<span>⚡ Verifying OTP in real-time...</span>";
+      verifyBtn.innerHTML = "<span>⚡ Verifying code...</span>";
 
       try {
-        const res = await fetch("/api/admin/verify-otp", {
+        const res = await fetch("/api/admin/2fa/verify", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            otpSessionId: sessionId,
-            otp: otpCode
+            preAuthSessionId: PRE_AUTH_SESSION_ID,
+            totpCode: code
           })
         });
         const data = await res.json();
@@ -405,251 +451,416 @@
           if (data.token) {
             localStorage.setItem("admin_session_token", data.token);
           }
-          if (RESEND_TIMER_INTERVAL) clearInterval(RESEND_TIMER_INTERVAL);
-          if (OTP_EXPIRY_INTERVAL) clearInterval(OTP_EXPIRY_INTERVAL);
-          sessionStorage.removeItem("admin_otp_session_id");
-          CURRENT_OTP_SESSION_ID = null;
+          PRE_AUTH_SESSION_ID = null;
           showToast("🎉 Two-factor authentication successful!");
           showDashboard();
         } else {
-          const errMsg = data.error || "Invalid OTP. Please try again.";
+          const errMsg = data.error || "Invalid or expired verification code. Please check your Authenticator app.";
           if (errBanner) {
             errBanner.textContent = errMsg;
             errBanner.style.display = "block";
           }
           showToast("❌ " + errMsg);
 
-          // Real-time shake feedback on error
-          const grid = document.getElementById("otp-inputs-grid");
+          // Shake grid animation
+          const grid = document.getElementById("totp-inputs-grid");
           if (grid) {
             grid.classList.add("otp-shake");
             setTimeout(() => grid.classList.remove("otp-shake"), 400);
           }
-
-          // Clear digits and refocus first box
-          for (let i = 0; i < 6; i++) {
-            const box = document.getElementById(`otp-digit-${i}`);
-            if (box) box.value = "";
+          clearDigitGrid("totp", 6);
+          if (data.lockedOut) {
+            setTimeout(() => backToLoginStep1(), 2500);
           }
-          updateOtpFilledState();
-          const firstBox = document.getElementById("otp-digit-0");
-          if (firstBox) firstBox.focus();
         }
       } catch (err) {
-        showToast("❌ Network error verifying OTP.");
+        showToast("❌ Network error verifying Authenticator code.");
       } finally {
-        IS_VERIFYING_OTP = false;
+        IS_VERIFYING_TOTP = false;
         verifyBtn.disabled = false;
         verifyBtn.innerHTML = origText;
       }
     }
 
-    // Resend OTP
-    async function handleResendOtp() {
-      const sessionId = CURRENT_OTP_SESSION_ID || sessionStorage.getItem("admin_otp_session_id");
-      if (!sessionId) {
-        showToast("⚠️ Session expired. Please sign in again.");
-        backToStep1();
+    // Step Setup: Verify Initial Setup Code & Confirm 2FA
+    async function handleVerifySetup(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const code = getEnteredDigitCode("setup", 6);
+      const errBanner = document.getElementById("setup-error-banner");
+      const succBanner = document.getElementById("setup-success-banner");
+
+      if (code.length < 6 || !/^\d{6}$/.test(code)) {
+        if (errBanner) {
+          errBanner.textContent = "Please enter the 6-digit code shown in your Authenticator app.";
+          errBanner.style.display = "block";
+        }
+        showToast("⚠️ Enter the full 6-digit code.");
         return;
       }
-      
-      const resendBtn = document.getElementById("btn-resend-otp");
-      resendBtn.disabled = true;
-      resendBtn.textContent = "Resending...";
+
+      if (!SETUP_PRE_AUTH_SESSION_ID) {
+        if (errBanner) {
+          errBanner.textContent = "Setup session expired. Please sign in again.";
+          errBanner.style.display = "block";
+        }
+        showToast("⚠️ Setup session expired.");
+        setTimeout(() => backToLoginStep1(), 1500);
+        return;
+      }
+
+      if (errBanner) errBanner.style.display = "none";
+      const submitBtn = document.getElementById("btn-setup-submit");
+      const origText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "<span>Pairing Authenticator...</span>";
 
       try {
-        const res = await fetch("/api/admin/resend-otp", {
+        const res = await fetch("/api/admin/2fa/verify-setup", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            otpSessionId: sessionId
+            preAuthSessionId: SETUP_PRE_AUTH_SESSION_ID,
+            totpCode: code
           })
         });
         const data = await res.json();
 
         if (res.ok && data.success) {
-          if (data.otpSessionId) {
-            CURRENT_OTP_SESSION_ID = data.otpSessionId;
-            sessionStorage.setItem("admin_otp_session_id", data.otpSessionId);
+          if (succBanner) {
+            succBanner.textContent = "✅ Authenticator successfully configured.";
+            succBanner.style.display = "block";
           }
-          startResendCountdown(data.cooldownSeconds || 60);
-          startOtpExpiryCountdown(data.expiresInSeconds || 300);
-          loadDevOtpPreview();
-          showToast("🔄 A fresh verification code has been dispatched!");
-          const errBanner = document.getElementById("otp-error-banner");
-          if (errBanner) errBanner.style.display = "none";
-          // Clear digits and focus first
-          for (let i = 0; i < 6; i++) {
-            const box = document.getElementById(`otp-digit-${i}`);
-            if (box) box.value = "";
+          if (data.token) {
+            localStorage.setItem("admin_session_token", data.token);
           }
-          updateOtpFilledState();
-          const firstBox = document.getElementById("otp-digit-0");
-          if (firstBox) firstBox.focus();
+          SETUP_PRE_AUTH_SESSION_ID = null;
+          showToast("🎉 Authenticator successfully configured!");
+          setTimeout(() => {
+            showDashboard();
+          }, 1200);
         } else {
-          showToast("❌ " + (data.error || "Could not resend OTP."));
-          resendBtn.disabled = false;
+          const errMsg = data.error || "Invalid confirmation code. Please enter the current code from your Authenticator app.";
+          if (errBanner) {
+            errBanner.textContent = errMsg;
+            errBanner.style.display = "block";
+          }
+          showToast("❌ " + errMsg);
+          const grid = document.getElementById("setup-inputs-grid");
+          if (grid) {
+            grid.classList.add("otp-shake");
+            setTimeout(() => grid.classList.remove("otp-shake"), 400);
+          }
+          clearDigitGrid("setup", 6);
         }
       } catch (err) {
-        showToast("❌ Could not connect to server.");
-        resendBtn.disabled = false;
+        showToast("❌ Network error confirming 2FA setup.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origText;
       }
     }
 
-    // Countdown Timer for Resend
-    function startResendCountdown(seconds = 60) {
-      if (RESEND_TIMER_INTERVAL) clearInterval(RESEND_TIMER_INTERVAL);
-      RESEND_SECONDS = seconds;
-      const btn = document.getElementById("btn-resend-otp");
-      const countdownSpan = document.getElementById("resend-countdown");
-      
-      btn.disabled = true;
-      countdownSpan.textContent = RESEND_SECONDS;
+    // Step Recovery: Verify Single-Use Emergency Recovery Code
+    async function handleVerifyRecoveryCode(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const codeInput = document.getElementById("admin-recovery-code-input");
+      const code = codeInput ? codeInput.value.trim().toUpperCase() : "";
+      const errBanner = document.getElementById("recovery-error-banner");
 
-      RESEND_TIMER_INTERVAL = setInterval(() => {
-        RESEND_SECONDS--;
-        if (RESEND_SECONDS <= 0) {
-          clearInterval(RESEND_TIMER_INTERVAL);
-          btn.disabled = false;
-          btn.innerHTML = "<span>🔄 Resend OTP</span>";
-        } else {
-          countdownSpan.textContent = RESEND_SECONDS;
+      if (!code) {
+        if (errBanner) {
+          errBanner.textContent = "Please enter an 8-character emergency recovery code.";
+          errBanner.style.display = "block";
         }
-      }, 1000);
-    }
+        return;
+      }
 
-    // Back to Step 1
-    function backToStep1() {
-      if (RESEND_TIMER_INTERVAL) clearInterval(RESEND_TIMER_INTERVAL);
-      if (OTP_EXPIRY_INTERVAL) clearInterval(OTP_EXPIRY_INTERVAL);
-      sessionStorage.removeItem("admin_otp_session_id");
-      CURRENT_OTP_SESSION_ID = null;
-      document.getElementById("login-step-2").style.display = "none";
-      document.getElementById("login-step-1").style.display = "block";
-      document.getElementById("admin-password-input").focus();
-    }
+      if (!PRE_AUTH_SESSION_ID) {
+        if (errBanner) {
+          errBanner.textContent = "Session expired. Please sign in again.";
+          errBanner.style.display = "block";
+        }
+        showToast("⚠️ Session expired.");
+        setTimeout(() => backToLoginStep1(), 1500);
+        return;
+      }
 
-    // Setup 6-digit Real-Time OTP Handlers (Auto-advance, backspace, paste, real-time typing & auto-verify)
-    function setupOtpInputHandlers() {
-      for (let i = 0; i < 6; i++) {
-        const input = document.getElementById(`otp-digit-${i}`);
-        if (!input) continue;
+      if (errBanner) errBanner.style.display = "none";
+      const submitBtn = document.getElementById("btn-recovery-submit");
+      const origText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "<span>Verifying Recovery Code...</span>";
 
-        // Auto-select on focus for effortless overwrite
-        input.addEventListener("focus", () => {
-          input.select();
+      try {
+        const res = await fetch("/api/admin/2fa/recovery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            preAuthSessionId: PRE_AUTH_SESSION_ID,
+            recoveryCode: code
+          })
         });
+        const data = await res.json();
 
-        // Real-time key handling (Digits, backspace jump-back, arrows)
-        input.addEventListener("keydown", (e) => {
-          const errBanner = document.getElementById("otp-error-banner");
-          if (errBanner) errBanner.style.display = "none";
-
-          // If numeric digit (0-9)
-          if (/^[0-9]$/.test(e.key)) {
-            e.preventDefault();
-            input.value = e.key;
-            updateOtpFilledState();
-
-            if (i < 5) {
-              const next = document.getElementById(`otp-digit-${i + 1}`);
-              if (next) {
-                next.focus();
-                next.select();
-              }
-            }
-            checkAndAutoVerifyOtp();
-            return;
+        if (res.ok && data.success) {
+          if (data.token) {
+            localStorage.setItem("admin_session_token", data.token);
           }
-
-          // Real-time backspace
-          if (e.key === "Backspace") {
-            e.preventDefault();
-            if (input.value) {
-              input.value = "";
-              updateOtpFilledState();
-            } else if (i > 0) {
-              const prev = document.getElementById(`otp-digit-${i - 1}`);
-              if (prev) {
-                prev.value = "";
-                updateOtpFilledState();
-                prev.focus();
-              }
-            }
-            return;
+          PRE_AUTH_SESSION_ID = null;
+          showToast(`⚠️ Recovery code verified! (${data.remainingCodesCount} remaining). Access granted.`);
+          showDashboard();
+        } else {
+          const errMsg = data.error || "Invalid or previously used recovery code.";
+          if (errBanner) {
+            errBanner.textContent = errMsg;
+            errBanner.style.display = "block";
           }
-
-          // Arrow keys navigation
-          if (e.key === "ArrowLeft" && i > 0) {
-            e.preventDefault();
-            const prev = document.getElementById(`otp-digit-${i - 1}`);
-            if (prev) {
-              prev.focus();
-              prev.select();
-            }
-          } else if (e.key === "ArrowRight" && i < 5) {
-            e.preventDefault();
-            const next = document.getElementById(`otp-digit-${i + 1}`);
-            if (next) {
-              next.focus();
-              next.select();
-            }
+          showToast("❌ " + errMsg);
+          if (codeInput) {
+            codeInput.value = "";
+            codeInput.focus();
           }
-        });
-
-        // Real-time input event (Catches mobile soft keyboards, virtual keypads, SMS autofill)
-        input.addEventListener("input", (e) => {
-          const raw = input.value.replace(/\D/g, "");
-          
-          if (raw.length > 1) {
-            // Multi-digit paste or SMS autofill
-            for (let j = 0; j < 6; j++) {
-              const box = document.getElementById(`otp-digit-${j}`);
-              if (box) box.value = raw[j] || "";
-            }
-            updateOtpFilledState();
-            const focusIdx = Math.min(raw.length, 5);
-            const focusEl = document.getElementById(`otp-digit-${focusIdx}`);
-            if (focusEl) focusEl.focus();
-            checkAndAutoVerifyOtp();
-            return;
-          }
-
-          input.value = raw.slice(-1);
-          updateOtpFilledState();
-
-          if (raw && i < 5) {
-            const next = document.getElementById(`otp-digit-${i + 1}`);
-            if (next) {
-              next.focus();
-              next.select();
-            }
-          }
-
-          checkAndAutoVerifyOtp();
-        });
-
-        // Real-time paste handler
-        input.addEventListener("paste", (e) => {
-          e.preventDefault();
-          const pasteData = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "");
-          if (pasteData.length > 0) {
-            for (let j = 0; j < 6; j++) {
-              const box = document.getElementById(`otp-digit-${j}`);
-              if (box) box.value = pasteData[j] || "";
-            }
-            updateOtpFilledState();
-            const focusIdx = Math.min(pasteData.length, 5);
-            const focusEl = document.getElementById(`otp-digit-${focusIdx}`);
-            if (focusEl) focusEl.focus();
-            checkAndAutoVerifyOtp();
-          }
-        });
+        }
+      } catch (err) {
+        showToast("❌ Network error verifying recovery code.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origText;
       }
     }
+
+    // Navigation & UI Helpers for 2FA
+    function backToLoginStep1() {
+      PRE_AUTH_SESSION_ID = null;
+      SETUP_PRE_AUTH_SESSION_ID = null;
+      const step1 = document.getElementById("login-step-1");
+      const step2 = document.getElementById("login-step-2");
+      const stepSetup = document.getElementById("login-step-setup");
+      const stepRec = document.getElementById("login-step-recovery");
+      if (step1) step1.style.display = "block";
+      if (step2) step2.style.display = "none";
+      if (stepSetup) stepSetup.style.display = "none";
+      if (stepRec) stepRec.style.display = "none";
+
+      const pwd = document.getElementById("admin-password-input");
+      if (pwd) {
+        pwd.value = "";
+        pwd.focus();
+      }
+    }
+
+    function showRecoveryStep() {
+      const step2 = document.getElementById("login-step-2");
+      const stepRec = document.getElementById("login-step-recovery");
+      if (step2) step2.style.display = "none";
+      if (stepRec) stepRec.style.display = "block";
+      const recInp = document.getElementById("admin-recovery-code-input");
+      if (recInp) {
+        recInp.value = "";
+        recInp.focus();
+      }
+      const errBanner = document.getElementById("recovery-error-banner");
+      if (errBanner) errBanner.style.display = "none";
+    }
+
+    function backToTotpStep2() {
+      const step2 = document.getElementById("login-step-2");
+      const stepRec = document.getElementById("login-step-recovery");
+      if (stepRec) stepRec.style.display = "none";
+      if (step2) step2.style.display = "block";
+      clearDigitGrid("totp", 6);
+    }
+
+    function toggleManualKeyDisplay() {
+      const box = document.getElementById("setup-manual-key-box");
+      if (!box) return;
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    }
+
+    function copyManualSecretKey() {
+      const text = document.getElementById("setup-manual-key-text")?.textContent || "";
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("📋 Secret key copied to clipboard!");
+      }).catch(() => {
+        showToast("Key: " + text);
+      });
+    }
+
+    function copySetupRecoveryCodes() {
+      if (!CURRENT_SETUP_RECOVERY_CODES.length) return;
+      const text = "Chinnodu Foods Admin Emergency Recovery Codes:\n\n" + 
+        CURRENT_SETUP_RECOVERY_CODES.map((c, i) => `${i + 1}. ${c}`).join("\n") +
+        "\n\nEach code can be used only once. Store in a secure password manager.";
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("📋 All 8 recovery codes copied to clipboard!");
+      }).catch(() => {
+        showToast("⚠️ Could not access clipboard.");
+      });
+    }
+
+    function copyModalRecoveryCodes() {
+      if (!CURRENT_MODAL_RECOVERY_CODES.length) return;
+      const text = "Chinnodu Foods Admin Emergency Recovery Codes:\n\n" + 
+        CURRENT_MODAL_RECOVERY_CODES.map((c, i) => `${i + 1}. ${c}`).join("\n") +
+        "\n\nEach code can be used only once. Store in a secure password manager.";
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("📋 New recovery codes copied to clipboard!");
+      }).catch(() => {
+        showToast("⚠️ Could not access clipboard.");
+      });
+    }
+
+    // 2FA Security Settings Modal
+    async function open2FaSettingsModal() {
+      const modal = document.getElementById("modal-2fa-settings");
+      if (!modal) return;
+      modal.style.display = "flex";
+
+      try {
+        const res = await fetch("/api/admin/2fa/status", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          const statusBadge = document.getElementById("modal-2fa-status-badge");
+          const confirmedAt = document.getElementById("modal-2fa-confirmed-at");
+          const recoveryCount = document.getElementById("modal-2fa-recovery-count");
+          const emailDisplay = document.getElementById("modal-2fa-account-email");
+
+          if (emailDisplay && data.account) emailDisplay.textContent = data.account;
+
+          if (data.two_factor_enabled) {
+            if (statusBadge) {
+              statusBadge.textContent = "🛡️ 2FA ACTIVE";
+              statusBadge.style.background = "#DCFCE7";
+              statusBadge.style.color = "#15803D";
+              statusBadge.style.borderColor = "#86EFAC";
+            }
+            if (confirmedAt) {
+              confirmedAt.textContent = data.two_factor_confirmed_at 
+                ? new Date(data.two_factor_confirmed_at).toLocaleString("en-IN") 
+                : "Active";
+            }
+            if (recoveryCount) {
+              recoveryCount.textContent = `${data.remainingRecoveryCodes} of ${data.totalRecoveryCodes || 8}`;
+            }
+          } else {
+            if (statusBadge) {
+              statusBadge.textContent = "⚠️ 2FA DISABLED";
+              statusBadge.style.background = "#FEF3C7";
+              statusBadge.style.color = "#92400E";
+              statusBadge.style.borderColor = "#FDE68A";
+            }
+            if (confirmedAt) confirmedAt.textContent = "Not configured";
+            if (recoveryCount) recoveryCount.textContent = "None";
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch 2FA status:", e);
+      }
+    }
+
+    function close2FaSettingsModal() {
+      const modal = document.getElementById("modal-2fa-settings");
+      if (modal) modal.style.display = "none";
+      const regBox = document.getElementById("modal-regenerated-codes-box");
+      if (regBox) regBox.style.display = "none";
+    }
+
+    async function promptRegenerateRecoveryCodes() {
+      const totpCode = prompt("Enter current 6-digit Authenticator code to authorize generating fresh recovery codes:");
+      if (!totpCode || totpCode.trim().length !== 6) {
+        if (totpCode) showToast("⚠️ Must enter a valid 6-digit code.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/admin/2fa/regenerate-recovery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ totpCode: totpCode.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          CURRENT_MODAL_RECOVERY_CODES = data.recoveryCodes || [];
+          const grid = document.getElementById("modal-new-codes-grid");
+          if (grid) {
+            grid.innerHTML = CURRENT_MODAL_RECOVERY_CODES.map(c => 
+              `<div class="recovery-code-pill">${c}</div>`
+            ).join("");
+          }
+          const box = document.getElementById("modal-regenerated-codes-box");
+          if (box) box.style.display = "block";
+          const countEl = document.getElementById("modal-2fa-recovery-count");
+          if (countEl) countEl.textContent = "8 of 8";
+          showToast("🎉 8 fresh emergency recovery codes generated! Save them now.");
+        } else {
+          showToast("❌ " + (data.error || "Failed to regenerate recovery codes."));
+        }
+      } catch (e) {
+        showToast("❌ Network error regenerating recovery codes.");
+      }
+    }
+
+    async function triggerReconfigure2Fa() {
+      const confirmReconfig = confirm("Reconfiguring 2FA will initiate a fresh pairing setup flow on your next login.\n\nDo you want to log out and pair your new authenticator now?");
+      if (!confirmReconfig) return;
+      close2FaSettingsModal();
+      adminLogout();
+    }
+
+    async function promptDisable2Fa() {
+      const password = prompt("Enter your admin password to confirm disabling 2FA:");
+      if (!password) return;
+      const totpCode = prompt("Enter the current 6-digit Authenticator code:");
+      if (!totpCode) return;
+
+      try {
+        const res = await fetch("/api/admin/2fa/disable", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ password, totpCode: totpCode.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast("⚠️ 2FA has been disabled for this account.");
+          close2FaSettingsModal();
+          open2FaSettingsModal();
+        } else {
+          showToast("❌ " + (data.error || "Failed to disable 2FA."));
+        }
+      } catch (e) {
+        showToast("❌ Network error disabling 2FA.");
+      }
+    }
+
+    // Page Load Initialization: Set up digit listeners & verify live session
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Setup both 6-digit grids
+      setupDigitGrid("totp", 6, () => handleVerifyTotp(), "totp-error-banner");
+      setupDigitGrid("setup", 6, () => handleVerifySetup(), "setup-error-banner");
+
+      // Verify token/session against live backend (Strict Zero-Trust on frontend)
+      try {
+        const authRes = await fetch("/api/admin/check-auth", { credentials: "include" });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          if (authData.authenticated) {
+            showDashboard();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Live session check error:", err);
+      }
+      
+      // If check-auth failed or unauthenticated, enforce login screen
+      localStorage.removeItem("admin_session_token");
+      showLoginScreen();
+    });
 
     async function confirmResetStoreData() {
       const confirmed = confirm("⚠️ ARE YOU ABSOLUTELY SURE?\n\nThis will permanently clear all orders, transaction history, and reset all financial account balances to ₹0 so you can start completely fresh.\n\nClick OK to confirm.");
@@ -679,7 +890,8 @@
 
     async function adminLogout() {
       try {
-        sessionStorage.removeItem("admin_otp_session_id");
+        PRE_AUTH_SESSION_ID = null;
+        SETUP_PRE_AUTH_SESSION_ID = null;
         localStorage.removeItem("admin_session_token");
         await fetch("/api/admin/logout", {
           method: "POST",
@@ -725,8 +937,12 @@
       if (loginScreen) loginScreen.style.display = "block";
       const step1 = document.getElementById("login-step-1");
       const step2 = document.getElementById("login-step-2");
+      const stepSetup = document.getElementById("login-step-setup");
+      const stepRec = document.getElementById("login-step-recovery");
       if (step1) step1.style.display = "block";
       if (step2) step2.style.display = "none";
+      if (stepSetup) stepSetup.style.display = "none";
+      if (stepRec) stepRec.style.display = "none";
       if (dashScreen) dashScreen.style.display = "none";
       if (navActions) navActions.style.display = "none";
 
@@ -734,7 +950,8 @@
       const passInp = document.getElementById("admin-password-input");
       if (userInp) userInp.value = "";
       if (passInp) passInp.value = "";
-      sessionStorage.removeItem("admin_otp_session_id");
+      PRE_AUTH_SESSION_ID = null;
+      SETUP_PRE_AUTH_SESSION_ID = null;
 
       if (reason) showToast(reason);
       if (userInp) userInp.focus();
