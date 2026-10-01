@@ -264,15 +264,16 @@
       background: #FFFFFF;
       color: var(--primary-maroon);
       outline: none;
-      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
       box-sizing: border-box;
       caret-color: var(--primary-maroon);
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     .otp-box:focus {
       border-color: var(--primary-maroon);
-      box-shadow: 0 0 0 3.5px rgba(107, 20, 38, 0.2);
+      box-shadow: 0 0 0 3px rgba(107, 20, 38, 0.2);
       background: #FFFDF9;
-      transform: translateY(-2px);
     }
     .otp-box.filled {
       border-color: var(--primary-maroon);
@@ -1570,13 +1571,15 @@
     }
 
     .input-admin {
-      padding: 0.55rem 0.75rem;
-      font-size: 0.88rem;
+      padding: 0.65rem 0.85rem;
+      font-size: 16px;
       border: 1px solid var(--border-color);
       border-radius: 8px;
       background: #FFFFFF;
       color: var(--text-main);
       outline: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .input-admin:focus {
@@ -1590,12 +1593,14 @@
       border: none;
       padding: 0.6rem 1.25rem;
       border-radius: 8px;
-      font-size: 0.88rem;
+      font-size: 0.92rem;
       font-weight: 700;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
       transition: background 0.15s;
       white-space: nowrap;
     }

@@ -162,9 +162,11 @@
       if (first) first.focus();
     }
 
-    // Generic 6-Digit Grid Setup (Auto-advance, backspace jump, paste, auto-verify with debounce)
+    // Generic 6-Digit Grid Setup (Ultra-responsive on Mobile & Desktop, no context-menu loupe delay)
     function setupDigitGrid(prefix, count = 6, onComplete, errorBannerId) {
       let completeDebounceTimer = null;
+      const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
       function checkAndTriggerComplete() {
         clearTimeout(completeDebounceTimer);
         completeDebounceTimer = setTimeout(() => {
@@ -172,7 +174,7 @@
           if (fullCode.length === count && /^\d+$/.test(fullCode) && onComplete) {
             onComplete();
           }
-        }, 40);
+        }, 30);
       }
 
       for (let i = 0; i < count; i++) {
@@ -180,7 +182,9 @@
         if (!input) continue;
 
         input.addEventListener("focus", () => {
-          input.select();
+          if (!isTouchDevice) {
+            input.select();
+          }
         });
 
         input.addEventListener("keydown", (e) => {
@@ -197,8 +201,10 @@
             if (i < count - 1) {
               const next = document.getElementById(`${prefix}-digit-${i + 1}`);
               if (next) {
-                next.focus();
-                next.select();
+                setTimeout(() => {
+                  next.focus();
+                  if (!isTouchDevice) next.select();
+                }, 10);
               }
             }
             checkAndTriggerComplete();
@@ -215,7 +221,7 @@
               if (prev) {
                 prev.value = "";
                 updateDigitGridFilledState(prefix, count);
-                prev.focus();
+                setTimeout(() => prev.focus(), 10);
               }
             }
             return;
@@ -226,14 +232,14 @@
             const prev = document.getElementById(`${prefix}-digit-${i - 1}`);
             if (prev) {
               prev.focus();
-              prev.select();
+              if (!isTouchDevice) prev.select();
             }
           } else if (e.key === "ArrowRight" && i < count - 1) {
             e.preventDefault();
             const next = document.getElementById(`${prefix}-digit-${i + 1}`);
             if (next) {
               next.focus();
-              next.select();
+              if (!isTouchDevice) next.select();
             }
           }
         });
@@ -248,7 +254,9 @@
             updateDigitGridFilledState(prefix, count);
             const focusIdx = Math.min(raw.length, count - 1);
             const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
-            if (focusEl) focusEl.focus();
+            if (focusEl) {
+              setTimeout(() => focusEl.focus(), 10);
+            }
             checkAndTriggerComplete();
             return;
           }
@@ -258,8 +266,10 @@
           if (raw && i < count - 1) {
             const next = document.getElementById(`${prefix}-digit-${i + 1}`);
             if (next) {
-              next.focus();
-              next.select();
+              setTimeout(() => {
+                next.focus();
+                if (!isTouchDevice) next.select();
+              }, 10);
             }
           }
           checkAndTriggerComplete();
@@ -276,10 +286,53 @@
             updateDigitGridFilledState(prefix, count);
             const focusIdx = Math.min(pasteData.length, count - 1);
             const focusEl = document.getElementById(`${prefix}-digit-${focusIdx}`);
-            if (focusEl) focusEl.focus();
+            if (focusEl) {
+              setTimeout(() => focusEl.focus(), 10);
+            }
             checkAndTriggerComplete();
           }
         });
+      }
+    }
+
+    // Fast Mobile One-Tap Clipboard Paste
+    async function pasteTotpFromClipboard(prefix = "totp") {
+      let code = "";
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          code = await navigator.clipboard.readText();
+        }
+      } catch (e) {}
+
+      code = String(code || "").trim().replace(/\D/g, "").slice(0, 6);
+      if (code.length === 6) {
+        for (let i = 0; i < 6; i++) {
+          const box = document.getElementById(`${prefix}-digit-${i}`);
+          if (box) box.value = code[i];
+        }
+        updateDigitGridFilledState(prefix, 6);
+        showToast("📋 6-digit code pasted!");
+        if (prefix === "totp") handleVerifyTotp();
+        else if (prefix === "setup") handleVerifySetup();
+        return;
+      }
+
+      // Fallback clean prompt if clipboard permission was blocked or empty
+      const manual = prompt("Paste your 6-digit Authenticator code:");
+      if (manual) {
+        const clean = manual.replace(/\D/g, "").slice(0, 6);
+        if (clean.length === 6) {
+          for (let i = 0; i < 6; i++) {
+            const box = document.getElementById(`${prefix}-digit-${i}`);
+            if (box) box.value = clean[i];
+          }
+          updateDigitGridFilledState(prefix, 6);
+          showToast("📋 Code entered!");
+          if (prefix === "totp") handleVerifyTotp();
+          else if (prefix === "setup") handleVerifySetup();
+        } else {
+          showToast("⚠️ Please enter a 6-digit code.");
+        }
       }
     }
 
@@ -359,6 +412,12 @@
           // Case 2: 2FA Active -> Authenticator verification required
           if (data.requires2Fa) {
             PRE_AUTH_SESSION_ID = data.preAuthSessionId;
+            try {
+              sessionStorage.setItem("cf_pre_auth_id", PRE_AUTH_SESSION_ID);
+              sessionStorage.setItem("cf_pre_auth_time", String(Date.now()));
+              if (data.account) sessionStorage.setItem("cf_pre_auth_account", data.account);
+            } catch (e) {}
+
             const accountDisplay = document.getElementById("totp-account-display");
             if (accountDisplay && data.account) {
               accountDisplay.textContent = `Authenticator App (${data.account})`;
@@ -370,7 +429,9 @@
             document.getElementById("login-step-2").style.display = "block";
             clearDigitGrid("totp", 6);
             const firstTotp = document.getElementById("totp-digit-0");
-            if (firstTotp) { firstTotp.focus(); firstTotp.select(); }
+            if (firstTotp) {
+              setTimeout(() => firstTotp.focus(), 50);
+            }
             showToast("🔐 Enter the 6-digit code from your Authenticator app.");
             return;
           }
@@ -893,6 +954,29 @@
         console.warn("Live session check error:", err);
       }
       
+      // Check if user was in the middle of 2FA verification before switching to Authenticator app on mobile
+      try {
+        const savedPreAuth = sessionStorage.getItem("cf_pre_auth_id");
+        const savedTime = Number(sessionStorage.getItem("cf_pre_auth_time")) || 0;
+        const isFresh = (Date.now() - savedTime) < 10 * 60 * 1000;
+        if (savedPreAuth && isFresh) {
+          PRE_AUTH_SESSION_ID = savedPreAuth;
+          const account = sessionStorage.getItem("cf_pre_auth_account");
+          const accountDisplay = document.getElementById("totp-account-display");
+          if (accountDisplay && account) {
+            accountDisplay.textContent = `Authenticator App (${account})`;
+          }
+          document.getElementById("login-step-1").style.display = "none";
+          document.getElementById("login-step-setup").style.display = "none";
+          document.getElementById("login-step-recovery").style.display = "none";
+          document.getElementById("login-step-2").style.display = "block";
+          clearDigitGrid("totp", 6);
+          const firstTotp = document.getElementById("totp-digit-0");
+          if (firstTotp) setTimeout(() => firstTotp.focus(), 100);
+          return;
+        }
+      } catch (e) {}
+
       // If check-auth failed or unauthenticated, enforce login screen
       localStorage.removeItem("admin_session_token");
       showLoginScreen();
@@ -973,13 +1057,22 @@
         switchAdminView("finance");
       }
 
-      // 3. Revalidate all portal data concurrently with high-speed parallel requests
-      Promise.allSettled([
-        fetchOrders(),
-        fetchFinanceData(),
-        fetchAdminProducts(),
-        fetchDatabaseStatus()
-      ]);
+      // Clear temporary 2FA pre-auth session once successfully in dashboard
+      try {
+        sessionStorage.removeItem("cf_pre_auth_id");
+        sessionStorage.removeItem("cf_pre_auth_time");
+        sessionStorage.removeItem("cf_pre_auth_account");
+      } catch (e) {}
+
+      // 3. Staggered background revalidation: prioritize active Orders view first
+      fetchOrders();
+      setTimeout(() => {
+        Promise.allSettled([
+          fetchFinanceData(),
+          fetchAdminProducts(),
+          fetchDatabaseStatus()
+        ]);
+      }, 150);
     }
 
     function showLoginScreen(reason = "") {
