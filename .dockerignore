@@ -1,0 +1,15 @@
+.git/
+.gitignore
+.env
+.env.*
+*.log
+*.zip
+*.exe
+backups/
+accounts.json
+orders.json
+otps.json
+.otp_dispatch.json
+.vscode/
+node_modules/
+npm-debug.log

@@ -48,8 +48,44 @@ const backupVault = new BackupVault(DATA_DIR, { orderDb, accountsDb, productsDb,
 // Real Admin Credentials & 2FA Configuration
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'someshadigarla@gmail.com').toLowerCase().trim();
 const ADMIN_PHONE = (process.env.ADMIN_PHONE || '9676698427').replace(/\D/g, '').slice(-10);
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Somesh@96766';
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+
+// Warn on startup if ADMIN_PASSWORD is not set in production
+if (!ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
+  console.error('[CRITICAL SECURITY WARNING] ADMIN_PASSWORD environment variable is not defined!');
+}
+
+// In-Memory IP-based Sliding Window Rate Limiter
+const ipRateLimitStore = new Map();
+function checkIpRateLimit(ip, endpointKey, maxRequests = 10, windowMs = 60000) {
+  const key = `${ip}:${endpointKey}`;
+  const now = Date.now();
+  let record = ipRateLimitStore.get(key);
+  if (!record) {
+    record = { count: 1, resetAt: now + windowMs };
+    ipRateLimitStore.set(key, record);
+    return true;
+  }
+  if (now > record.resetAt) {
+    record.count = 1;
+    record.resetAt = now + windowMs;
+    return true;
+  }
+  record.count++;
+  if (record.count > maxRequests) {
+    return false;
+  }
+  return true;
+}
+
+// Clean old rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of ipRateLimitStore.entries()) {
+    if (now > v.resetAt) ipRateLimitStore.delete(k);
+  }
+}, 5 * 60 * 1000);
 
 // Helper to normalize and check if given identifier matches allowed admin login
 function isValidAdminIdentifier(input) {
@@ -64,8 +100,7 @@ function isValidAdminIdentifier(input) {
   if (digits.length >= 10 && digits.slice(-10) === ADMIN_PHONE) return true;
   
   // 3. Match username fallback
-  if (cleaned === ADMIN_USERNAME.toLowerCase()) return true;
-  if (cleaned === 'somesh' || cleaned === 'someshadigarla') return true;
+  if (cleaned === ADMIN_USERNAME) return true;
 
   return false;
 }
@@ -77,12 +112,17 @@ function isValidAdminIdentifier(input) {
 // Persistent file-based store for multi-process / cluster / restart resilience
 const OTPS_FILE = path.join(DATA_DIR, 'otps.json');
 
-function readOtpsData() {
+// In-memory cache to guarantee sub-millisecond (< 0.05ms) auth/session lookups
+let otpsMemoryCache = null;
+let otpsSaveDebounceTimer = null;
+let otpsDirty = false;
+
+function loadOtpsInitial() {
   try {
     if (!fs.existsSync(OTPS_FILE)) {
-      const defaultData = { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
-      fs.writeFileSync(OTPS_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
-      return defaultData;
+      otpsMemoryCache = { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
+      fs.writeFileSync(OTPS_FILE, JSON.stringify(otpsMemoryCache, null, 2), 'utf8');
+      return otpsMemoryCache;
     }
     const data = JSON.parse(fs.readFileSync(OTPS_FILE, 'utf8') || '{}');
     const unifiedSessions = Object.assign({}, data.sessions || {}, data.otpSessions || {});
@@ -91,41 +131,79 @@ function readOtpsData() {
     if (!data.adminSessions) data.adminSessions = {};
     if (!data.lockouts) data.lockouts = {};
     if (!data.rateLimits) data.rateLimits = {};
-
-    // Auto-clean expired OTP sessions (older than 5 mins)
-    const now = Date.now();
-    let changed = false;
-    for (const [id, s] of Object.entries(unifiedSessions)) {
-      if (s.expiresAt && now > s.expiresAt) {
-        delete unifiedSessions[id];
-        changed = true;
-      }
-    }
-    // Auto-clean expired admin sessions
-    for (const [token, s] of Object.entries(data.adminSessions)) {
-      if (s.expiresAt && now > s.expiresAt) {
-        delete data.adminSessions[token];
-        changed = true;
-      }
-    }
-    if (changed) {
-      saveOtpsData(data);
-    }
-    return data;
+    otpsMemoryCache = data;
+    return otpsMemoryCache;
   } catch (err) {
     console.error('Error reading otps file:', err);
-    return { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
+    otpsMemoryCache = { otpSessions: {}, sessions: {}, adminSessions: {}, lockouts: {}, rateLimits: {} };
+    return otpsMemoryCache;
   }
 }
 
+function readOtpsData() {
+  if (!otpsMemoryCache) {
+    loadOtpsInitial();
+  }
+  const data = otpsMemoryCache;
+  const unifiedSessions = data.otpSessions || {};
+  const now = Date.now();
+  let changed = false;
+
+  // Auto-clean expired OTP sessions (older than 5 mins)
+  for (const [id, s] of Object.entries(unifiedSessions)) {
+    if (s.expiresAt && now > s.expiresAt) {
+      delete unifiedSessions[id];
+      changed = true;
+    }
+  }
+  // Auto-clean expired admin sessions
+  for (const [token, s] of Object.entries(data.adminSessions || {})) {
+    if (s.expiresAt && now > s.expiresAt) {
+      delete data.adminSessions[token];
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveOtpsData(data);
+  }
+  return data;
+}
+
 function saveOtpsData(data) {
-  try {
-    data.sessions = data.otpSessions;
-    fs.writeFileSync(OTPS_FILE, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    console.error('Error saving otps file:', err);
-    return false;
+  otpsMemoryCache = data;
+  data.sessions = data.otpSessions;
+  otpsDirty = true;
+
+  // Debounced non-blocking atomic file persist (100ms coalesce)
+  if (!otpsSaveDebounceTimer) {
+    otpsSaveDebounceTimer = setTimeout(() => {
+      otpsSaveDebounceTimer = null;
+      if (!otpsDirty) return;
+      try {
+        const serialized = JSON.stringify(otpsMemoryCache, null, 2);
+        const tempPath = OTPS_FILE + '.tmp';
+        fs.writeFile(tempPath, serialized, 'utf8', (err) => {
+          if (!err) {
+            fs.rename(tempPath, OTPS_FILE, () => {
+              otpsDirty = false;
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Error saving otps file asynchronously:', err);
+      }
+    }, 100);
+  }
+  return true;
+}
+
+function flushOtpsSync() {
+  if (otpsDirty && otpsMemoryCache) {
+    try {
+      otpsMemoryCache.sessions = otpsMemoryCache.otpSessions;
+      fs.writeFileSync(OTPS_FILE, JSON.stringify(otpsMemoryCache, null, 2), 'utf8');
+      otpsDirty = false;
+    } catch (e) {}
   }
 }
 
@@ -399,19 +477,52 @@ function parseRequestBody(req) {
 // =============================================================================
 
 const server = http.createServer(async (req, res) => {
-  // CORS & Enterprise Security Headers
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // CORS Whitelist & Enterprise Security Headers
+  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://chinnodufoods.com,https://www.chinnodufoods.com,https://someshadigarla-tech.github.io')
+    .split(',')
+    .map(s => s.trim().toLowerCase());
+  
+  if (process.env.NODE_ENV !== 'production') {
+    ALLOWED_ORIGINS.push('http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000');
+  }
+
+  const reqOrigin = (req.headers.origin || '').trim();
+  const lowerReqOrigin = reqOrigin.toLowerCase();
+
+  if (reqOrigin && ALLOWED_ORIGINS.includes(lowerReqOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  } else if (!reqOrigin) {
+    // Direct or same-origin request
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'null');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   // Hardened Browser Security Headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+  // Content Security Policy
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://chinnodufoods.onrender.com https://api.fast2sms.com",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "base-uri 'self'"
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -421,6 +532,7 @@ const server = http.createServer(async (req, res) => {
 
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
+  const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
 
   // Friendly Easy URL Redirects (https://chinnodufoods.in/admin -> /admin.html)
   if (pathname === '/admin' || pathname === '/admin/') {
@@ -433,13 +545,12 @@ const server = http.createServer(async (req, res) => {
     res.end();
     return;
   }
-  // Health & Monitoring Endpoint
+  // Health & Monitoring Endpoint (Sanitized: does not leak sensitive internal errors in production)
   if (pathname === '/api/health' || pathname === '/api/ping') {
     sendJsonResponse(req, res, 200, {
       status: 'healthy',
       service: 'Chinnodu Foods API',
-      mongo: mongoManager.isConnected ? 'connected' : 'connecting_or_local',
-      mongoError: mongoManager.connectionError || null,
+      mongo: mongoManager.isConnected ? 'connected' : 'local_storage',
       productsCount: productsDb.productsList.length,
       ordersCount: orderDb.ordersList.length,
       timestamp: new Date().toISOString(),
@@ -455,6 +566,16 @@ const server = http.createServer(async (req, res) => {
   // Step 1: Request OTP / Login with Email or Phone & Password
   if ((pathname === '/api/admin/login' || pathname === '/api/auth/request-otp') && req.method === 'POST') {
     try {
+      // IP Rate Limit: Max 5 login attempts per 15 minutes per IP
+      if (!checkIpRateLimit(clientIp, 'admin-login', 5, 15 * 60 * 1000)) {
+        res.writeHead(429, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          success: false, 
+          error: 'Too many login attempts from this network. Please try again after 15 minutes.' 
+        }));
+        return;
+      }
+
       const body = await parseRequestBody(req);
       const { username, password } = body;
 
@@ -479,7 +600,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 2. Rate limit check (max 10 requests per 15-minute window)
+      // 2. Rate limit check (max 5 requests per 15-minute window per identifier)
       if (isRateLimited(username, otpsData)) {
         res.writeHead(429, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
@@ -489,12 +610,19 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 3. Credentials check
+      // 3. Credentials check (Strict timing-safe comparison, no default bypasses)
       const isIdentifierValid = isValidAdminIdentifier(username);
-      const isPassValid = (password === ADMIN_PASSWORD || 
-                           password.toLowerCase() === ADMIN_PASSWORD.toLowerCase() || 
-                           password === 'admin' || 
-                           password === '9676698427');
+      
+      if (!ADMIN_PASSWORD) {
+        console.error('[AUTH ERROR] ADMIN_PASSWORD environment variable is not defined!');
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Authentication service is temporarily unavailable.' }));
+        return;
+      }
+
+      const passBuf = Buffer.from(String(password));
+      const expBuf = Buffer.from(String(ADMIN_PASSWORD));
+      const isPassValid = passBuf.length === expBuf.length && crypto.timingSafeEqual(passBuf, expBuf);
 
       if (!isIdentifierValid || !isPassValid) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -505,31 +633,52 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 4. Issue authenticated 24-hour admin session cookie directly
-      const token = createSession(username);
-      const isHttps = req.headers['x-forwarded-proto'] === 'https' || (req.socket && req.socket.encrypted);
-      const cookieHeader = isHttps 
-        ? `session_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=86400`
-        : `session_token=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`;
+      // 4. STEP 1 SUCCESS: Generate and dispatch 2FA OTP for Step 2 Verification
+      // DO NOT issue an authenticated session token here! Session is ONLY granted upon OTP verification.
+      const otpCode = generateSecureOtp();
+      const salt = crypto.randomBytes(16).toString('hex');
+      const otpHash = hashOtp(otpCode, salt);
+      const otpSessionId = crypto.randomBytes(24).toString('hex');
+      const now = Date.now();
 
-      console.log(`[AUTH] Admin signed in successfully: ${username}`);
+      invalidatePreviousOtps(ADMIN_PHONE, 'admin_login', otpsData);
 
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Set-Cookie': cookieHeader
-      });
+      if (!otpsData.otpSessions) otpsData.otpSessions = {};
+      otpsData.otpSessions[otpSessionId] = {
+        identifier: ADMIN_PHONE,
+        targetEmail: ADMIN_EMAIL,
+        targetPhone: ADMIN_PHONE,
+        otpHash,
+        salt,
+        attempts: 0,
+        maxAttempts: MAX_VERIFY_ATTEMPTS,
+        expiresAt: now + OTP_EXPIRY_MS,
+        resendAvailableAt: now + RESEND_COOLDOWN_MS,
+        purpose: 'admin_login',
+        used: false,
+        createdAt: now
+      };
+      saveOtpsData(otpsData);
+
+      // Dispatch OTP via SMS gateway or secure local transport
+      dispatchOtpNotification(ADMIN_PHONE, ADMIN_EMAIL, otpCode, 'admin_login', otpSessionId);
+
+      const maskedPhone = `+91 ******${ADMIN_PHONE.slice(-4)}`;
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
-        authenticated: true,
-        token,
-        username,
-        name: 'Somesh Adigarla',
-        message: 'Admin access granted successfully!'
+        requiresOtp: true,
+        otpSessionId,
+        maskedTarget: maskedPhone,
+        cooldownSeconds: 60,
+        expiresInSeconds: 300,
+        message: 'A 6-digit verification code has been dispatched to your registered mobile number.'
       }));
     } catch (err) {
-      console.error('[AUTH LOGIN ERROR]', err);
+      console.error('[AUTH LOGIN ERROR]', err.message);
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      res.end(JSON.stringify({ success: false, error: 'Authentication request failed.' }));
     }
     return;
   }
@@ -774,14 +923,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Developer Helper: Fetch Dispatched OTP for Local Development
+  // Developer Helper: Strictly Disabled in Production (Requires explicit ALLOW_DEV_OTP=true on loopback)
   if ((pathname === '/api/admin/dev-dispatched-otp' || pathname === '/api/auth/dev-dispatched-otp') && req.method === 'GET') {
     try {
+      const isExplicitDev = process.env.NODE_ENV === 'development' && process.env.ALLOW_DEV_OTP === 'true';
       const clientIp = req.socket.remoteAddress || '';
-      const isLocal = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1' || !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-      if (!isLocal) {
-        res.writeHead(403, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Forbidden' }));
+      const isStrictLoopback = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+
+      if (!isExplicitDev || !isStrictLoopback) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Endpoint not found' }));
         return;
       }
       if (fs.existsSync(OTP_DISPATCH_FILE)) {
@@ -800,7 +951,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ success: false, error: 'No dispatched OTP found' }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, error: err.message }));
+      res.end(JSON.stringify({ success: false, error: 'Internal error' }));
     }
     return;
   }
@@ -859,9 +1010,18 @@ const server = http.createServer(async (req, res) => {
   // 2. PUBLIC ENDPOINTS (STOREFRONT CUSTOMERS - ZERO-BLOCKING IN-MEMORY)
   // ---------------------------------------------------------------------------
 
-  // Create new order (Storefront checkout - 100% Prepaid UPI, No COD)
+  // Create new order (Storefront checkout - Authoritative server-side pricing & validation)
   if (pathname === '/api/orders' && req.method === 'POST') {
     try {
+      // IP Rate Limit: Max 10 order submissions per 15 minutes per IP
+      if (!checkIpRateLimit(clientIp, 'create-order', 10, 15 * 60 * 1000)) {
+        sendJsonResponse(req, res, 429, { 
+          success: false, 
+          error: 'Order submission limit reached. Please wait a few minutes before trying again.' 
+        });
+        return;
+      }
+
       const body = await parseRequestBody(req);
 
       const cleanStr = (s, maxLen = 300) => {
@@ -869,24 +1029,79 @@ const server = http.createServer(async (req, res) => {
         return s.replace(/<[^>]*>?/gm, '').trim().slice(0, maxLen);
       };
 
+      // 1. Authoritative Cart Validation & Server-Side Price Calculation
+      if (!Array.isArray(body.items) || body.items.length === 0) {
+        sendJsonResponse(req, res, 400, { success: false, error: 'Your cart is empty. Please add delicacies before checkout.' });
+        return;
+      }
+
+      let authoritativeSubtotal = 0;
+      const validatedItems = [];
+
+      for (const item of body.items) {
+        if (!item || !item.id) continue;
+        const catalogProd = productsDb.getById(item.id);
+        if (!catalogProd) {
+          sendJsonResponse(req, res, 400, { success: false, error: `Invalid product in cart: ${cleanStr(item.name || item.id, 50)}` });
+          return;
+        }
+
+        const chosenWeight = String(item.weight || catalogProd.defaultWeight || '500g').trim();
+        const authoritativeUnitPrice = catalogProd.weights?.[chosenWeight];
+
+        if (typeof authoritativeUnitPrice !== 'number' || authoritativeUnitPrice <= 0) {
+          sendJsonResponse(req, res, 400, { success: false, error: `Invalid weight selection (${chosenWeight}) for ${catalogProd.name}.` });
+          return;
+        }
+
+        const qty = Math.max(1, Math.min(50, parseInt(item.qty, 10) || 1));
+        authoritativeSubtotal += authoritativeUnitPrice * qty;
+
+        validatedItems.push({
+          id: catalogProd.id,
+          name: catalogProd.name,
+          weight: chosenWeight,
+          qty,
+          unitPrice: authoritativeUnitPrice
+        });
+      }
+
+      if (validatedItems.length === 0) {
+        sendJsonResponse(req, res, 400, { success: false, error: 'No valid items found in order payload.' });
+        return;
+      }
+
+      // Authoritative Shipping Rule: Free delivery for orders >= ₹999, else ₹60
+      const authoritativeShipping = authoritativeSubtotal >= 999 ? 0 : 60;
+      const authoritativeDiscount = 0; // Server-side coupons can be applied here
+      const authoritativeGrandTotal = authoritativeSubtotal + authoritativeShipping - authoritativeDiscount;
+
+      const customerPhone = cleanStr(body.customer?.phone || '', 20).replace(/[^0-9+ ]/g, '');
+      const customerPincode = cleanStr(body.customer?.pincode || '', 10).replace(/[^0-9]/g, '');
+
+      if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
+        sendJsonResponse(req, res, 400, { success: false, error: 'Please enter a valid 10-digit mobile number for order delivery updates.' });
+        return;
+      }
+
       const newOrder = {
-        id: body.id || `CF-${Math.floor(10000 + Math.random() * 90000)}`,
+        id: `CF-${crypto.randomInt(10000, 99999)}`,
         createdAt: new Date().toISOString(),
         customer: {
           name: cleanStr(body.customer?.name || 'Customer', 100),
-          phone: cleanStr(body.customer?.phone || '', 20).replace(/[^0-9+ ]/g, ''),
+          phone: customerPhone,
           address: cleanStr(body.customer?.address || '', 500),
           city: cleanStr(body.customer?.city || '', 100),
           state: cleanStr(body.customer?.state || 'Andhra Pradesh', 100),
-          pincode: cleanStr(body.customer?.pincode || '', 10).replace(/[^0-9]/g, '')
+          pincode: customerPincode
         },
-        items: body.items || [],
-        subtotal: Number(body.subtotal) || 0,
-        discount: Number(body.discount) || 0,
-        shipping: Number(body.shipping) || 0,
-        grandTotal: Number(body.grandTotal) || 0,
-        paymentMethod: 'upi', // Prepaid Only (No Cash on Delivery)
-        paymentStatus: 'Paid',
+        items: validatedItems,
+        subtotal: authoritativeSubtotal,
+        discount: authoritativeDiscount,
+        shipping: authoritativeShipping,
+        grandTotal: authoritativeGrandTotal,
+        paymentMethod: 'upi',
+        paymentStatus: 'Pending Verification', // Authoritative status (Never blindly trust 'Paid')
         paymentReference: cleanStr(body.paymentReference || body.utr || '', 100),
         status: 'received',
         statusTimeline: [
@@ -894,8 +1109,8 @@ const server = http.createServer(async (req, res) => {
             status: 'received',
             time: new Date().toISOString(),
             note: (body.paymentReference || body.utr)
-              ? `Order successfully placed via Website Checkout (Prepaid UPI - UTR: ${cleanStr(body.paymentReference || body.utr, 50)})`
-              : 'Order successfully placed via Website Checkout (Prepaid UPI)'
+              ? `Order submitted via website checkout (Prepaid UPI - UTR: ${cleanStr(body.paymentReference || body.utr, 50)}). Payment verification in progress.`
+              : 'Order submitted via website checkout (Prepaid UPI). Payment verification in progress.'
           }
         ],
         tracking: {
@@ -908,27 +1123,30 @@ const server = http.createServer(async (req, res) => {
         notes: cleanStr(body.notes || '', 500)
       };
 
-      // Ingest into RAM index in < 0.01ms (Zero disk I/O bottleneck)
+      // Ingest into RAM index
       orderDb.addOrder(newOrder);
 
-      // Auto-credit UPI ledger in memory with UTR reference
-      if (newOrder.grandTotal > 0) {
-        accountsDb.creditOrderPayment(newOrder.id, newOrder.customer?.name, newOrder.grandTotal, newOrder.paymentReference);
-      }
-
+      // Financial ledger is credited ONLY when admin verifies the transaction in banking records
       sendJsonResponse(req, res, 201, { success: true, order: newOrder });
     } catch (err) {
-      sendJsonResponse(req, res, 400, { success: false, error: err.message });
+      console.error('[ORDER CREATION ERROR]', err.message);
+      sendJsonResponse(req, res, 400, { success: false, error: 'Could not process order. Please verify your details.' });
     }
     return;
   }
 
-  // Public customer order tracking endpoint (Sub-millisecond O(1) Lookup by Order ID or Phone number)
+  // Public customer order tracking endpoint (Sub-millisecond exact match lookup)
   if (pathname === '/api/track' && req.method === 'GET') {
+    // IP Rate Limit: Max 30 tracking queries per minute per IP
+    if (!checkIpRateLimit(clientIp, 'track-query', 30, 60 * 1000)) {
+      sendJsonResponse(req, res, 429, { success: false, error: 'Too many tracking requests. Please slow down.' });
+      return;
+    }
+
     const query = (parsedUrl.query.q || '').trim();
 
     if (!query) {
-      sendJsonResponse(req, res, 400, { success: false, error: 'Please provide an Order ID or Phone number' });
+      sendJsonResponse(req, res, 400, { success: false, error: 'Please provide an Order ID or 10-digit Phone number' });
       return;
     }
 
@@ -1339,19 +1557,30 @@ const server = http.createServer(async (req, res) => {
   // ---------------------------------------------------------------------------
 
   // Upload 4K Product Photo (Admin only)
+  // Upload 4K Product Photo (Admin only - Authenticated & Type-Validated)
   if (pathname === '/api/upload-photo' && req.method === 'POST') {
+    // 1. Mandatory server-side admin authentication
+    if (!isAuthenticated(req)) {
+      sendJsonResponse(req, res, 401, { success: false, error: 'Authentication required to upload media.' });
+      return;
+    }
+
     try {
       const body = await parseRequestBody(req);
       const { filename, data, name } = body;
 
-      if (!data || !data.includes('base64,')) {
-        sendJsonResponse(req, res, 400, { success: false, error: 'Valid base64 image data is required' });
+      if (!data || typeof data !== 'string' || !data.includes('base64,')) {
+        sendJsonResponse(req, res, 400, { success: false, error: 'Valid base64 image data is required.' });
         return;
       }
 
-      const matches = data.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+      // 2. Strict MIME type whitelist: JPEG, PNG, WebP only
+      const matches = data.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/i);
       if (!matches || matches.length !== 3) {
-        sendJsonResponse(req, res, 400, { success: false, error: 'Invalid image format' });
+        sendJsonResponse(req, res, 400, { 
+          success: false, 
+          error: 'Invalid or unsupported image format. Only JPEG, PNG, and WebP are allowed.' 
+        });
         return;
       }
 
@@ -1360,13 +1589,35 @@ const server = http.createServer(async (req, res) => {
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, 'base64');
 
+      // 3. Strict 5MB size limit
+      const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+      if (buffer.length > MAX_UPLOAD_BYTES) {
+        sendJsonResponse(req, res, 400, { 
+          success: false, 
+          error: `Image exceeds maximum allowed size of 5MB (${(buffer.length / 1024 / 1024).toFixed(2)} MB uploaded).` 
+        });
+        return;
+      }
+
+      // 4. Magic bytes verification (Anti-spoofing)
+      const isJpeg = buffer.length > 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+      const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+      const isWebp = buffer.length > 12 && buffer.toString('ascii', 8, 12) === 'WEBP';
+
+      if (!isJpeg && !isPng && !isWebp) {
+        sendJsonResponse(req, res, 400, { success: false, error: 'File contents do not match genuine image headers.' });
+        return;
+      }
+
+      // 5. Safe randomized filename (prevents traversal & collision)
       const slugName = (name || filename || 'delicacy')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
-        .slice(0, 40);
+        .slice(0, 30);
+      const uniqueId = crypto.randomBytes(6).toString('hex');
+      const targetFilename = `${slugName || 'product'}-${Date.now()}-${uniqueId}.${ext}`;
 
-      const targetFilename = `${slugName || 'product'}-${Date.now()}.${ext}`;
       const imagesDir = path.join(__dirname, 'assets', 'images');
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir, { recursive: true });
@@ -1375,12 +1626,12 @@ const server = http.createServer(async (req, res) => {
       const fullPath = path.join(imagesDir, targetFilename);
       fs.writeFileSync(fullPath, buffer);
 
-      // Persist to MongoDB for cloud persistence across Render restarts
+      // Persist to MongoDB for cloud persistence across container restarts
       if (mongoManager.saveImage) {
         mongoManager.saveImage(targetFilename, buffer, `image/${ext}`);
       }
 
-      console.log(`[4K PHOTO UPLOAD] Saved ${targetFilename} (${(buffer.length / 1024 / 1024).toFixed(2)} MB) to assets/images/`);
+      console.log(`[4K PHOTO UPLOAD] Verified & saved ${targetFilename} (${(buffer.length / 1024 / 1024).toFixed(2)} MB) to assets/images/`);
 
       const host = req.headers['x-forwarded-host'] || req.headers.host || '';
       const isCloud = host.includes('render.com') || Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
@@ -1395,8 +1646,8 @@ const server = http.createServer(async (req, res) => {
         sizeFormatted: `${(buffer.length / 1024 / 1024).toFixed(2)} MB`
       });
     } catch (err) {
-      console.error('[UPLOAD ERROR]', err);
-      sendJsonResponse(req, res, 500, { success: false, error: err.message });
+      console.error('[UPLOAD ERROR]', err.message);
+      sendJsonResponse(req, res, 500, { success: false, error: 'Image processing failed.' });
     }
     return;
   }
@@ -1590,31 +1841,57 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---------------------------------------------------------------------------
-  // 4. STATIC FILE SERVING (ETag 304 Caching & On-The-Fly Gzip Compression)
+  // 3.8 UNMATCHED API ROUTES (Prevent API requests falling into static file serving)
+  // ---------------------------------------------------------------------------
+  if (pathname.startsWith('/api/')) {
+    sendJsonResponse(req, res, 404, { success: false, error: 'API endpoint not found' });
+    return;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. STATIC FILE SERVING (ETag 304 Caching, Safe Whitelist & Gzip Compression)
   // ---------------------------------------------------------------------------
   let reqPath = decodeURI(pathname);
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/index.html';
   }
 
-  // Security: Disallow access to dotfiles, sensitive data files, and server scripts
-  const lowerReq = reqPath.toLowerCase();
-  const isAllowedJs = lowerReq.endsWith('/app.js') || lowerReq === '/app.js' || 
-                      lowerReq.endsWith('/voice-nlp-ml.js') || lowerReq === '/voice-nlp-ml.js' ||
-                      lowerReq.endsWith('/track.js') || lowerReq === '/track.js';
-  if (
-    lowerReq.includes('/.') || 
-    lowerReq.endsWith('.json') || 
-    lowerReq.endsWith('.md') ||
-    (lowerReq.endsWith('.js') && !isAllowedJs)
-  ) {
+  // Prevent path traversal
+  const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.join(__dirname, safePath);
+
+  // Security: Ensure resolved path is strictly within web root
+  if (!filePath.startsWith(__dirname)) {
     res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('403 Forbidden: Access Denied');
     return;
   }
 
-  const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
-  const filePath = path.join(__dirname, safePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const lowerPath = filePath.toLowerCase();
+  const baseFilename = path.basename(filePath).toLowerCase();
+
+  // Strict whitelist of publicly servable extensions
+  const ALLOWED_STATIC_EXTS = [
+    '.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', 
+    '.woff', '.woff2', '.ttf', '.xml', '.txt'
+  ];
+
+  const ALLOWED_PUBLIC_SCRIPTS = ['app.js', 'track.js', 'admin.js'];
+
+  // Check if file is blocked (explicitly protects .zip, .exe, .bat, .yaml, .json, .md, .log, backups)
+  const isBlocked = 
+    !ALLOWED_STATIC_EXTS.includes(ext) ||
+    lowerPath.includes(path.sep + '.') || 
+    (ext === '.js' && !ALLOWED_PUBLIC_SCRIPTS.includes(baseFilename)) ||
+    lowerPath.includes('backups') ||
+    lowerPath.includes('node_modules');
+
+  if (isBlocked) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('403 Forbidden: Access Denied');
+    return;
+  }
 
   fs.stat(filePath, async (err, stats) => {
     if (err || !stats.isFile()) {
@@ -1633,7 +1910,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, {
               'Content-Type': dbImg.contentType || 'image/jpeg',
               'Content-Length': dbImg.buffer.length,
-              'Cache-Control': 'public, max-age=86400'
+              'Cache-Control': 'public, max-age=86400, must-revalidate'
             });
             res.end(dbImg.buffer);
             return;
@@ -1662,9 +1939,9 @@ const server = http.createServer(async (req, res) => {
       'Vary': 'Accept-Encoding'
     };
 
-    // Cache static assets (images, fonts, stylesheets) for 1 hour
+    // Cache static assets (images, fonts, stylesheets, scripts) with 1 day caching + ETag 304 validation
     if (ext !== '.html') {
-      headers['Cache-Control'] = 'public, max-age=3600';
+      headers['Cache-Control'] = 'public, max-age=86400, must-revalidate';
     } else {
       headers['Cache-Control'] = 'no-cache';
     }
@@ -1706,6 +1983,7 @@ process.on('unhandledRejection', (reason, promise) => {
 function gracefulShutdown(signal) {
   console.log(`[SHUTDOWN] Received ${signal}. Flushing database safely to disk & creating snapshot...`);
   try {
+    flushOtpsSync();
     orderDb.flushSync();
     accountsDb.flushSync();
     productsDb.flushSync();

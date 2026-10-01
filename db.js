@@ -46,9 +46,8 @@ class MongoManager {
     this.isConnecting = false;
     this.connectionError = null;
     this.apiKey = process.env.MONGODB_API_KEY || process.env.ATLAS_API_KEY || null;
-    const DEFAULT_ATLAS_URI = 'mongodb+srv://someshadigarla_db_user:Somesh%4096766@cluster0.6f60fe5.mongodb.net/chinnodu_foods?retryWrites=true&w=majority&appName=Cluster0';
-    this.mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || DEFAULT_ATLAS_URI;
-    this.dbName = 'chinnodu_foods';
+    this.mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || null;
+    this.dbName = process.env.MONGODB_DB_NAME || 'chinnodu_foods';
     this.retryQueue = [];
     this.retryInterval = null;
     this.collections = {
@@ -60,12 +59,13 @@ class MongoManager {
       sessions: null,
       images: null
     };
+    this.imageCache = new Map(); // In-memory LRU cache for ultrafast 0ms image serving
   }
 
   // Mask MongoDB credentials for safe logging and client status
   getMaskedUri() {
     try {
-      if (!this.mongoUri) return 'Not Configured';
+      if (!this.mongoUri) return 'Not Configured (Local WAL Active)';
       return this.mongoUri.replace(/\/\/(.*?):(.*?)@/, '//***:***@');
     } catch (e) {
       return 'Configured';
@@ -74,6 +74,12 @@ class MongoManager {
 
   async connect() {
     if (this.isConnected || this.isConnecting) return this;
+    if (!this.mongoUri) {
+      this.isConnected = false;
+      this.isConnecting = false;
+      this.connectionError = 'MONGODB_URI not configured; running in local storage mode';
+      return this;
+    }
     this.isConnecting = true;
 
     try {
@@ -319,6 +325,9 @@ class MongoManager {
 
   // 4K Photo Image Storage in MongoDB (Preserves uploaded photos across cloud restarts)
   async saveImage(filename, buffer, contentType = 'image/jpeg') {
+    if (this.imageCache) {
+      this.imageCache.set(filename, { buffer, contentType, cachedAt: Date.now() });
+    }
     if (!this.isConnected || !this.collections.images) return;
     try {
       await this.collections.images.updateOne(
@@ -332,14 +341,25 @@ class MongoManager {
   }
 
   async getImage(filename) {
+    if (this.imageCache && this.imageCache.has(filename)) {
+      return this.imageCache.get(filename);
+    }
     if (!this.isConnected || !this.collections.images) return null;
     try {
       const doc = await this.collections.images.findOne({ _id: filename });
       if (!doc || !doc.data) return null;
-      return {
+      const result = {
         buffer: Buffer.from(doc.data, 'base64'),
         contentType: doc.contentType || 'image/jpeg'
       };
+      if (this.imageCache) {
+        if (this.imageCache.size > 100) {
+          const firstKey = this.imageCache.keys().next().value;
+          this.imageCache.delete(firstKey);
+        }
+        this.imageCache.set(filename, result);
+      }
+      return result;
     } catch (e) {
       return null;
     }
@@ -502,29 +522,31 @@ class OrderDatabase {
   // Fast Customer Tracking Lookup (Order ID or 10-digit Phone)
   track(query) {
     if (!query) return [];
-    const cleanQuery = String(query).trim();
-    const cleanUpper = cleanQuery.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleanQuery = String(query).trim().toUpperCase();
+    const cleanUpper = cleanQuery.replace(/[^A-Z0-9]/g, '');
     const cleanDigits = cleanQuery.replace(/\D/g, '');
 
     // 1. Direct ID match (O(1))
-    const byId = this.ordersMap.get(cleanUpper);
+    const byId = this.ordersMap.get(cleanQuery) || this.ordersMap.get(cleanUpper);
     if (byId) return [byId];
 
-    // 2. Direct Phone match (O(1))
+    // If ID had or lacked hyphens/formatting, match canonical alphanumeric ID
+    if (cleanUpper.length >= 4) {
+      for (const [idKey, ord] of this.ordersMap.entries()) {
+        if (idKey.replace(/[^A-Z0-9]/g, '') === cleanUpper) {
+          return [ord];
+        }
+      }
+    }
+
+    // 2. Direct Phone match (O(1)) - exact 10 digits required
     if (cleanDigits.length >= 10) {
       const byPhone = this.ordersByPhone.get(cleanDigits.slice(-10));
       if (byPhone && byPhone.length > 0) return byPhone;
     }
 
-    // 3. Fast partial scan if not exact (ID, Phone, or UPI UTR)
-    return this.ordersList.filter(o => {
-      const oId = (o.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const oPhone = (o.customer?.phone || '').replace(/\D/g, '');
-      const oUtr = (o.paymentReference || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      return oId.includes(cleanUpper) || 
-             (cleanDigits.length >= 6 && oPhone.includes(cleanDigits)) ||
-             (cleanUpper.length >= 8 && oUtr.includes(cleanUpper));
-    });
+    // 3. Strict match only: disallow partial substring queries to prevent customer enumeration
+    return [];
   }
 
   // Ingest new order with Zero Data Loss (RAM + Disk WAL + MongoDB)

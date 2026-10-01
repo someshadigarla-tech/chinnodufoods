@@ -228,9 +228,9 @@ function renderCustomerTrackCard(order) {
                   📋 Copy ID
                 </button>
               </div>
-              ${tracking.trackingUrl ? `
+              ${(tracking.trackingUrl && /^https?:\/\//i.test(tracking.trackingUrl.trim())) ? `
                 <div style="margin-top:10px;">
-                  <a href="${escapeHtml(tracking.trackingUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-size:0.86rem; padding:8px 18px; text-decoration:none; border-radius:999px;">
+                  <a href="${escapeHtml(tracking.trackingUrl.trim())}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-size:0.86rem; padding:8px 18px; text-decoration:none; border-radius:999px;">
                     <span>🌐 Track Live on ${escapeHtml(tracking.courier || 'Courier')} Official Portal &rarr;</span>
                   </a>
                 </div>

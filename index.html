@@ -1221,29 +1221,7 @@
     <span class="floating-cart-total" id="floating-cart-total">View Cart • ₹0</span>
   </button>
 
-  <!-- Floating Draggable AI Voice & NLP Assistant Bar (Right Side / Live Moveable) -->
-  <button class="floating-voice-ai-btn" id="floating-voice-ai-btn" aria-label="Open Chinnodu AI Voice Assistant" title="Hold &amp; Drag to move anywhere • Click to speak (Press 'V')">
-    <span class="voice-ai-drag-handle" title="Drag anywhere across the screen" aria-hidden="true">
-      <svg width="8" height="13" viewBox="0 0 8 13" fill="currentColor">
-        <circle cx="2" cy="2" r="1.2"/>
-        <circle cx="6" cy="2" r="1.2"/>
-        <circle cx="2" cy="6.5" r="1.2"/>
-        <circle cx="6" cy="6.5" r="1.2"/>
-        <circle cx="2" cy="11" r="1.2"/>
-        <circle cx="6" cy="11" r="1.2"/>
-      </svg>
-    </span>
-    <div class="voice-ai-mic-icon">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-        <line x1="12" y1="19" x2="12" y2="23"></line>
-        <line x1="8" y1="23" x2="16" y2="23"></line>
-      </svg>
-      <span class="voice-ai-pulse-ring"></span>
-    </div>
-    <span class="voice-ai-pill-label">Voice AI 🎙️</span>
-  </button>
+
 
   <!-- Floating Mobile Quick Search Pill (As shown in mobile reference design) -->
   <div class="mobile-bottom-search-bar" id="mobile-bottom-search-bar">
@@ -1256,105 +1234,7 @@
     </button>
   </div>
 
-  <!-- ===================================================================== -->
-  <!-- CHINNODU AI VOICE & NLP ASSISTANT CONCIERGE MODAL -->
-  <!-- ===================================================================== -->
-  <div class="voice-ai-modal-overlay" id="voice-ai-modal-overlay" onclick="handleVoiceOverlayClick(event)">
-    <div class="voice-ai-card" id="voice-ai-card">
-      
-      <!-- Header -->
-      <div class="voice-ai-header">
-        <div class="voice-ai-branding">
-          <div class="voice-ai-avatar">🎙️</div>
-          <div>
-            <h3 class="voice-ai-title">Chinnodu AI Concierge</h3>
-            <span class="voice-ai-badge">NLP + ML Cuisine Intelligence</span>
-          </div>
-        </div>
-        <div class="voice-ai-header-actions">
-          <button type="button" class="btn-voice-sound-toggle" id="btn-voice-sound-toggle" onclick="toggleVoiceSpeechSynthesis()" title="Mute / Unmute Assistant Speech">
-            🔊
-          </button>
-          <button type="button" class="btn-voice-close" onclick="closeVoiceAssistantModal()" aria-label="Close Voice Assistant">&times;</button>
-        </div>
-      </div>
 
-      <!-- Live Waveform Visualizer & Listening State -->
-      <div class="voice-ai-visualizer-box" id="voice-ai-visualizer-box">
-        <div class="voice-soundwaves" id="voice-soundwaves">
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-          <span class="wave-bar"></span>
-        </div>
-        <div class="voice-status-indicator" id="voice-status-indicator">
-          <span class="status-dot"></span>
-          <span id="voice-status-text">Ready • Tap microphone or speak...</span>
-        </div>
-      </div>
-
-      <!-- Transcript & NLP Understanding Box -->
-      <div class="voice-transcript-container" id="voice-transcript-container">
-        <div class="voice-bubble assistant" id="voice-assistant-greeting">
-          Namaste! 🙏 I am your <strong>Chinnodu Foods AI Concierge</strong>. You can speak in English or Telugu!
-          <br><br>
-          Try saying:
-          <br>• <em>"Add 500g Bellam Sunnunda to my cart"</em>
-          <br>• <em>"Show me Andhra traditional sweets under 350"</em>
-          <br>• <em>"What ingredients do you use in Ghee Arisalu?"</em>
-          <br>• <em>"Track my order status"</em>
-        </div>
-        <div class="voice-nlp-chips" id="voice-nlp-chips" style="display:none;"></div>
-      </div>
-
-      <!-- Quick Action Voice Chips -->
-      <div class="voice-quick-chips">
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Add 500g Bellam Sunnunda')">
-          🍯 Add Sunnunda
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show authentic sweets')">
-          🪔 Traditional Sweets
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Find Andhra Gongura Pickle')">
-          🌿 Gongura Pickle
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show Godavari Chegodilu')">
-          🥨 Chegodilu Snacks
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Show sun dried Mango Thandra')">
-          🥭 Mango Thandra
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Tell me about ingredients and pure cow ghee')">
-          ✨ Purity &amp; Ghee
-        </button>
-        <button type="button" class="voice-chip" onclick="simulateVoiceCommand('Track my order')">
-          📍 Track Order
-        </button>
-      </div>
-
-      <!-- Bottom Voice Controls & Fallback Input -->
-      <div class="voice-ai-controls">
-        <button type="button" class="btn-voice-mic-main" id="btn-voice-mic-main" onclick="toggleSpeechRecognition()" aria-label="Toggle Microphone">
-          <svg class="mic-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-        </button>
-        
-        <form class="voice-text-fallback-form" id="voice-text-fallback-form" onsubmit="handleVoiceTextSubmit(event)">
-          <input type="text" id="voice-text-fallback-input" placeholder="Or type your food command here..." autocomplete="off">
-          <button type="submit" class="btn-voice-send" title="Send text command">➔</button>
-        </form>
-      </div>
-
-    </div>
-  </div>
 
   <!-- Notification Toast Box -->
   <div class="toast-container" id="toast-container"></div>
@@ -1364,7 +1244,6 @@
 
   <!-- Main JavaScript App Logic -->
   <script src="app.js"></script>
-  <!-- AI Voice Assistant, NLP Models & Machine Learning (ML) Engine -->
-  <script src="voice-nlp-ml.js"></script>
+
 </body>
 </html>

@@ -37,7 +37,7 @@
     "rating": 4.8,
     "reviewsCount": 170,
     "spice": "🌶️ Mild & Crispy",
-    "image": "assets/images/gothum-pendi-cheppes.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/gothum-pendi-cheppes-wheat-chekkalu-1790749915887.jpg",
     "description": "Crisp hand-pressed round crackers made from wholesome stone-ground whole wheat flour seasoned with ajwain, sesame and butter.",
     "shelfLife": "45 Days",
     "ingredients": "Whole Wheat Flour (Gothuma Pindi), Butter, Ajwain, White Sesame, Red Chilli, Wood-Pressed Oil, Salt.",
@@ -49,7 +49,7 @@
     "defaultWeight": "250g",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:49:40.683Z"
+    "updatedAt": "2026-09-30T06:31:56.130Z"
   },
   {
     "id": "rava-laddu",
@@ -63,7 +63,7 @@
     "rating": 4.8,
     "reviewsCount": 175,
     "spice": "🍯 Melt in Mouth",
-    "image": "assets/images/rava-laddu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/rava-laddu-1790749987177.jpg",
     "description": "Aromatic Bombay semolina roasted to a golden hue in pure ghee, blended with sugar, dried coconut flakes, plump raisins, and cashews.",
     "shelfLife": "20 Days",
     "ingredients": "Bombay Rava, Desi Ghee, Sugar, Fresh Grated Coconut, Cashews, Raisins, Cardamom.",
@@ -73,7 +73,8 @@
     },
     "defaultWeight": "500g",
     "deliveryCharge": 40,
-    "dietLabel": "Pure Vegetarian"
+    "dietLabel": "Pure Vegetarian",
+    "updatedAt": "2026-09-30T06:33:07.911Z"
   },
   {
     "id": "tati-thandra",
@@ -241,7 +242,7 @@
     "rating": 5,
     "reviewsCount": 320,
     "spice": "🍯 Sesame & Ghee Rich",
-    "image": "assets/images/ghee-nuvvula-arisalu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/ghee-nuvvula-arisalu-1790750634326.jpg",
     "description": "Pure ghee arisalu generously crusted with farm sesame seeds for an irresistible nutty crunch alongside sweet, soft jaggery dough.",
     "shelfLife": "25 Days",
     "ingredients": "Wet Rice Flour, Organic Jaggery, Pure Cow Ghee, White Sesame Seeds (Nuvvulu), Cardamom.",
@@ -251,7 +252,8 @@
     },
     "defaultWeight": "500g",
     "deliveryCharge": 40,
-    "dietLabel": "Pure Vegetarian"
+    "dietLabel": "Pure Vegetarian",
+    "updatedAt": "2026-09-30T06:43:54.596Z"
   },
   {
     "id": "chegodilu",
@@ -265,7 +267,7 @@
     "rating": 5,
     "reviewsCount": 420,
     "spice": "🌶️ Super Crunchy Rings",
-    "image": "assets/images/chegodilu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/godavari-chegodilu-1790750570415.jpg",
     "description": "Crispy golden rings crafted from cooked rice dough, seasoned with moong dal, ajwain, and white sesame. Super crisp with an addictive crunch.",
     "shelfLife": "60 Days",
     "ingredients": "Rice Flour, Soaked Moong Dal, Cumin Seeds, Ajwain, White Sesame, Pure Cold-Pressed Oil, Salt.",
@@ -274,9 +276,10 @@
       "500g": 280,
       "1kg": 560
     },
-    "defaultWeight": "500g",
+    "defaultWeight": "250g",
     "deliveryCharge": 40,
-    "dietLabel": "Pure Vegetarian"
+    "dietLabel": "Pure Vegetarian",
+    "updatedAt": "2026-09-30T06:42:50.669Z"
   },
   {
     "id": "ragi-laddu",
@@ -308,15 +311,15 @@
     "id": "beetroot-janthikalu",
     "name": "Beetroot Janthikalu",
     "teluguName": "బీట్‌రూట్ జంతికలు (మురుకులు)",
-    "category": "savouries",
-    "categoryLabel": "Crispy Savouries",
-    "diet": "veg",
+    "category": "podis",
+    "categoryLabel": "Aromatic Podis",
+    "diet": "non-veg",
     "inStock": true,
     "tag": "Healthy & Colorful",
     "rating": 4.9,
     "reviewsCount": 240,
     "spice": "🌶️ Mild & Nutritious",
-    "image": "assets/images/beetroot-janthikalu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/beetroot-janthikalu-1790750802836.jpg",
     "description": "",
     "shelfLife": "45 Days",
     "ingredients": "Fresh Beetroot Puree, Rice Flour, Roasted Gram Flour, Ajwain, Cumin, Cold-Pressed Oil, Salt.",
@@ -327,8 +330,8 @@
     },
     "defaultWeight": "250g",
     "deliveryCharge": 100,
-    "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:51:03.177Z"
+    "dietLabel": "Non-Vegetarian",
+    "updatedAt": "2026-09-30T08:11:39.424Z"
   },
   {
     "id": "tomata-pickle",
@@ -368,7 +371,7 @@
     "rating": 4.9,
     "reviewsCount": 310,
     "spice": "🌶️ Crunchy Cumin Savory",
-    "image": "assets/images/janthikalu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/traditional-janthikalu-murukku-1790750603824.jpg",
     "description": "The quintessential Andhra tea-time murukku! Hand-pressed rice flour spirals tempered with white sesame, carom seeds, and hing.",
     "shelfLife": "60 Days",
     "ingredients": "Rice Flour, Roasted Chana Flour, Cumin, White Sesame, Ajwain, Cold-Pressed Groundnut Oil, Salt.",
@@ -380,7 +383,7 @@
     "defaultWeight": "250g",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:50:41.889Z"
+    "updatedAt": "2026-09-30T06:43:24.261Z"
   },
   {
     "id": "mango-thandra-bellam",
@@ -445,7 +448,7 @@
     "rating": 4.8,
     "reviewsCount": 140,
     "spice": "🍯 Crisp Sugar-Glazed",
-    "image": "assets/images/gorumitilu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/gorumitilu-1790750684171.jpg",
     "description": "Classic sweet crisps shaped delicately by hand, deep fried in pure oil and dipped in crystallized fragrant cardamom sugar syrup.",
     "shelfLife": "30 Days",
     "ingredients": "Wheat & All-Purpose Flour, Pure Ghee, Sugar Syrup, Cardamom.",
@@ -457,7 +460,7 @@
     "defaultWeight": "250g",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:48:54.166Z"
+    "updatedAt": "2026-09-30T06:44:44.650Z"
   },
   {
     "id": "challa-guthulu",
@@ -471,7 +474,7 @@
     "rating": 4.8,
     "reviewsCount": 160,
     "spice": "Mild Crunchy Snack",
-    "image": "assets/images/challa-guthulu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/challa-guthulu-rose-cookies-1790750708136.jpg",
     "description": "Traditional Andhra flower-shaped cookies prepared using brass cast iron moulds with rice and coconut batter. Delicately crunchy and light.",
     "shelfLife": "45 Days",
     "ingredients": "Rice Flour, Fine Flour, Sugar, Cardamom, Wood-Pressed Pure Oil.",
@@ -483,7 +486,7 @@
     "defaultWeight": "250g",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:51:21.016Z"
+    "updatedAt": "2026-09-30T06:45:08.580Z"
   },
   {
     "id": "karam-gavvalu",
@@ -497,7 +500,7 @@
     "rating": 4.9,
     "reviewsCount": 275,
     "spice": "🌶️🌶️ Medium Spicy Crunch",
-    "image": "assets/images/karam-gavvalu.jpg",
+    "image": "https://chinnodufoods.onrender.com/assets/images/karam-gavvalu-spicy-shells-1790750738564.jpg",
     "description": "Traditional fluted shell snacks kneaded with spicy red chilli powder, roasted cumin, and butter. Extremely crunchy and savory.",
     "shelfLife": "60 Days",
     "ingredients": "Wheat Flour, Rice Flour, Red Chilli Powder, Cumin, Butter, Wood-Pressed Oil, Rock Salt.",
@@ -509,7 +512,7 @@
     "defaultWeight": "250g",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian",
-    "updatedAt": "2026-09-26T14:50:17.369Z"
+    "updatedAt": "2026-09-30T06:45:38.823Z"
   },
   {
     "id": "ghee-arisalu",
@@ -583,7 +586,7 @@
       "1kg": 700
     },
     "defaultWeight": "500g",
-    "updatedAt": "2026-09-26T13:41:31.941Z",
+    "updatedAt": "2026-09-30T05:59:30.632Z",
     "deliveryCharge": 100,
     "dietLabel": "Pure Vegetarian"
   },

@@ -22,3 +22,5 @@ services:
         sync: false # Optional: Set to send real SMS
       - key: MONGODB_URI
         sync: false # Optional: Set MongoDB Atlas connection string for zero data loss
+      - key: ALLOWED_ORIGINS
+        value: "https://chinnodufoods.com,https://www.chinnodufoods.com,https://someshadigarla-tech.github.io"

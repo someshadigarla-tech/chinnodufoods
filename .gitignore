@@ -1,20 +1,31 @@
 # Dependencies
 node_modules/
 
-# Local OTP dispatch records & temporary files
-.otp_dispatch.json
+# Environment Variables & Secrets
 .env
+.env.*
+!.env.example
+
+# Local OTP dispatch records, sessions & temporary files
+.otp_dispatch.json
+otps.json
+*.tmp
 *.log
+
+# Runtime Data Stores & Backups (Contains live customer PII & transactions)
+# Safe sample templates are seeded if files are absent
+accounts.json
+orders.json
+backups/
 
 # OS & IDE
 .DS_Store
 Thumbs.db
 .vscode/
 
-# Binaries & archives (to prevent upload limits)
+# Binaries & archives (to prevent upload limits & binary execution risks)
 cloudflared.exe
 *.zip
-
-# Local backups & runtime sessions
-backups/
-otps.json
+*.tar.gz
+*.exe
+*.bak

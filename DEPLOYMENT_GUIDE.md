@@ -55,7 +55,7 @@ You don't need to deploy online just to test on your mobile phone. As long as yo
    | :--- | :--- | :--- |
    | `ADMIN_EMAIL` | `someshadigarla@gmail.com` | Registered admin email |
    | `ADMIN_PHONE` | `9676698427` | Registered admin mobile |
-   | `ADMIN_PASSWORD` | `Somesh@96766` | Admin login password |
+   | `ADMIN_PASSWORD` | `<YOUR_STRONG_ADMIN_PASSWORD>` | Strong secret admin login password |
    | `NODE_ENV` | `production` | Production mode |
    | `FAST2SMS_API_KEY` | *(Optional)* | Your API key to send real mobile SMS |
 6. Click **"Deploy Web Service"**.
@@ -102,7 +102,7 @@ Log into your domain provider (GoDaddy, Hostinger, Namecheap, Google Domains/Squ
 5. Go to your project settings -> **"Variables"** and add:
    - `ADMIN_EMAIL` = `someshadigarla@gmail.com`
    - `ADMIN_PHONE` = `9676698427`
-   - `ADMIN_PASSWORD` = `Somesh@96766`
+   - `ADMIN_PASSWORD` = `<YOUR_STRONG_ADMIN_PASSWORD>`
    - `NODE_ENV` = `production`
 6. Under **"Networking"**, click **"Generate Domain"** to get your public HTTPS URL.
 

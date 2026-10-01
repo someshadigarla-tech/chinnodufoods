@@ -11,6 +11,16 @@ const API_BASE = (window.location.hostname.includes("github.io") || window.locat
   ? BACKEND_URL
   : "";
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // =============================================================================
 // Chinnodu Foods Official Menu Dataset (Live Catalog with local fallback)
 // =============================================================================
@@ -820,7 +830,7 @@ function renderStorefront() {
       <article class="product-card ${isInStock ? '' : 'product-out-of-stock'}" data-product-id="${prod.id}">
         <!-- Media Area -->
         <div class="product-media" onclick="openQuickView('${prod.id}')">
-          <img src="${prod.image}" alt="${prod.name}" class="product-thumb" loading="lazy" onerror="this.src='assets/images/brand-logo.jpg'">
+          <img src="${prod.image}" alt="${prod.name}" class="product-thumb" loading="lazy" decoding="async" onerror="this.src='assets/images/brand-logo.jpg'">
           
           <!-- Veg / Non-Veg Standard Dot Indicator -->
           <div class="diet-badge ${prod.diet === 'non-veg' ? 'non-veg' : 'veg'}" title="${safeEscape(prod.dietLabel || (prod.diet === 'non-veg' ? 'Non-Vegetarian' : 'Pure Vegetarian'))}"></div>
@@ -1738,11 +1748,11 @@ function handleCheckoutSubmit(e) {
 
   const receiptSummary = document.getElementById("success-receipt-summary");
   receiptSummary.innerHTML = `
-    <div style="margin-bottom:8px;"><strong>Customer:</strong> ${name} (${phone})</div>
-    <div style="margin-bottom:8px;"><strong>Address:</strong> ${address}, ${city}, ${state} - ${pincode}</div>
+    <div style="margin-bottom:8px;"><strong>Customer:</strong> ${escapeHtml(name)} (${escapeHtml(phone)})</div>
+    <div style="margin-bottom:8px;"><strong>Address:</strong> ${escapeHtml(address)}, ${escapeHtml(city)}, ${escapeHtml(state)} - ${escapeHtml(pincode)}</div>
     <div style="margin-bottom:8px;"><strong>Payment Mode:</strong> <span style="color:#059669; font-weight:700;">Prepaid UPI (PhonePe / Google Pay / Paytm)</span></div>
-    <div style="margin-bottom:8px;"><strong>UPI Reference / UTR:</strong> <span style="font-family:monospace; background:#DBEAFE; color:#1E40AF; padding:2px 8px; border-radius:4px; font-weight:700; border:1px solid #93C5FD;">${utr}</span></div>
-    <div style="margin-bottom:8px;"><strong>Items Ordered:</strong> ${APP_STATE.cart.length} types (${APP_STATE.cart.map(i => `${i.name} [${i.weight}]`).join(', ')})</div>
+    <div style="margin-bottom:8px;"><strong>UPI Reference / UTR:</strong> <span style="font-family:monospace; background:#DBEAFE; color:#1E40AF; padding:2px 8px; border-radius:4px; font-weight:700; border:1px solid #93C5FD;">${escapeHtml(utr)}</span></div>
+    <div style="margin-bottom:8px;"><strong>Items Ordered:</strong> ${APP_STATE.cart.length} types (${APP_STATE.cart.map(i => `${escapeHtml(i.name)} [${escapeHtml(i.weight)}]`).join(', ')})</div>
     <div style="border-top:1px dashed var(--border-color); padding-top:8px;"><strong>Total Paid:</strong> <span style="color:var(--primary-maroon); font-size:1.1rem; font-weight:800;">₹${grandTotal}</span></div>
   `;
 
@@ -1789,48 +1799,53 @@ function setupSearchLogic() {
 
   if (!searchInput) return;
 
+  let desktopSearchTimer = null;
   searchInput.addEventListener("input", (e) => {
     const val = e.target.value.trim().toLowerCase();
     APP_STATE.searchQuery = val;
 
-    if (val.length > 0) {
-      searchWrapper.classList.add("has-val");
+    if (desktopSearchTimer) clearTimeout(desktopSearchTimer);
+    desktopSearchTimer = setTimeout(() => {
+      if (val.length > 0) {
+        searchWrapper.classList.add("has-val");
 
-      const matches = PRODUCTS_DATABASE.filter(p => 
-        p.name.toLowerCase().includes(val) ||
-        p.teluguName.includes(val) ||
-        p.categoryLabel.toLowerCase().includes(val)
-      ).slice(0, 5);
+        const matches = PRODUCTS_DATABASE.filter(p => 
+          p.name.toLowerCase().includes(val) ||
+          p.teluguName.includes(val) ||
+          p.categoryLabel.toLowerCase().includes(val)
+        ).slice(0, 5);
 
-      if (matches.length > 0) {
-        dropdown.classList.add("show");
-        dropdown.innerHTML = matches.map(m => {
-          const startingPrice = Object.values(m.weights)[0];
-          return `
-            <div class="search-result-item" onclick="openQuickView('${m.id}')">
-              <img src="${m.image}" alt="${m.name}" class="search-result-thumb">
-              <div class="search-result-info">
-                <div class="search-result-name">${m.name}</div>
-                <div class="search-result-price">Starts at ₹${startingPrice}</div>
+        if (matches.length > 0) {
+          dropdown.classList.add("show");
+          dropdown.innerHTML = matches.map(m => {
+            const startingPrice = Object.values(m.weights)[0];
+            return `
+              <div class="search-result-item" onclick="openQuickView('${m.id}')">
+                <img src="${m.image}" alt="${m.name}" class="search-result-thumb" loading="lazy" decoding="async">
+                <div class="search-result-info">
+                  <div class="search-result-name">${m.name}</div>
+                  <div class="search-result-price">Starts at ₹${startingPrice}</div>
+                </div>
               </div>
-            </div>
-          `;
-        }).join('');
-      } else {
-        dropdown.classList.add("show");
-        dropdown.innerHTML = `<div style="padding:14px; text-align:center; font-size:0.85rem; color:var(--text-muted);">No matching delicacies found</div>`;
-      }
+            `;
+          }).join('');
+        } else {
+          dropdown.classList.add("show");
+          dropdown.innerHTML = `<div style="padding:14px; text-align:center; font-size:0.85rem; color:var(--text-muted);">No matching delicacies found</div>`;
+        }
 
-      renderStorefront();
-    } else {
-      searchWrapper.classList.remove("has-val");
-      dropdown.classList.remove("show");
-      dropdown.innerHTML = "";
-      renderStorefront();
-    }
+        renderStorefront();
+      } else {
+        searchWrapper.classList.remove("has-val");
+        dropdown.classList.remove("show");
+        dropdown.innerHTML = "";
+        renderStorefront();
+      }
+    }, 120);
   });
 
   clearBtn.addEventListener("click", () => {
+    if (desktopSearchTimer) clearTimeout(desktopSearchTimer);
     searchInput.value = "";
     APP_STATE.searchQuery = "";
     searchWrapper.classList.remove("has-val");
@@ -1846,10 +1861,14 @@ function setupSearchLogic() {
 
   const pillInput = document.getElementById("mobile-search-pill-input");
   if (pillInput) {
+    let pillSearchTimer = null;
     pillInput.addEventListener("input", (e) => {
       const val = e.target.value.trim().toLowerCase();
       APP_STATE.searchQuery = val;
-      renderStorefront();
+      if (pillSearchTimer) clearTimeout(pillSearchTimer);
+      pillSearchTimer = setTimeout(() => {
+        renderStorefront();
+      }, 120);
     });
   }
 }
@@ -2037,7 +2056,7 @@ async function trackOrderLookup(query) {
         <div style="font-size:2rem; margin-bottom:0.5rem;">🔍</div>
         <h4 style="color:var(--primary-maroon); font-size:1.1rem; margin-bottom:0.35rem;">Order Not Found</h4>
         <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;">
-          We couldn't locate any order for <strong>"${query}"</strong>. Please check your Order ID (starts with CF-) or registered 10-digit phone number.
+          We couldn't locate any order for <strong>"${escapeHtml(query)}"</strong>. Please check your Order ID (starts with CF-) or registered 10-digit phone number.
         </p>
         <div style="margin-top:1rem;">
           <a href="https://wa.me/917382914229?text=Hi%20Chinnodu%20Foods!%20I%20need%20help%20tracking%20my%20order%20${encodeURIComponent(query)}" target="_blank" class="btn-wa-gold" style="display:inline-flex; font-size:0.85rem; padding:0.5rem 1rem;">
@@ -2074,7 +2093,7 @@ function renderCustomerTrackCard(order) {
     <div class="track-card-result">
       <div class="track-card-header">
         <div>
-          <span class="track-order-id-pill">#${order.id}</span>
+          <span class="track-order-id-pill">#${escapeHtml(order.id)}</span>
           <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
             Placed on ${new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </div>
@@ -2107,16 +2126,16 @@ function renderCustomerTrackCard(order) {
         <div class="courier-dispatch-banner">
           <div class="courier-banner-icon">🚚</div>
           <div class="courier-banner-info">
-            <h4 class="courier-banner-title">Parcel Dispatched via ${tracking.courier || 'Express Courier'}</h4>
+            <h4 class="courier-banner-title">Parcel Dispatched via ${escapeHtml(tracking.courier || 'Express Courier')}</h4>
             <div class="courier-tracking-row">
-              <span class="tracking-id-text">Tracking / Consignment No: <strong>${tracking.trackingId}</strong></span>
-              <button type="button" class="btn-copy-sm" onclick="navigator.clipboard.writeText('${tracking.trackingId}'); showToast('Copied Tracking ID!');">
+              <span class="tracking-id-text">Tracking / Consignment No: <strong>${escapeHtml(tracking.trackingId)}</strong></span>
+              <button type="button" class="btn-copy-sm" onclick="navigator.clipboard.writeText('${escapeHtml(tracking.trackingId)}'); showToast('Copied Tracking ID!');">
                 📋 Copy
               </button>
             </div>
-            ${tracking.trackingUrl ? `
+            ${(tracking.trackingUrl && /^https?:\/\//i.test(tracking.trackingUrl.trim())) ? `
               <div style="margin-top:0.6rem;">
-                <a href="${tracking.trackingUrl}" target="_blank" rel="noopener noreferrer" class="btn-track-courier">
+                <a href="${escapeHtml(tracking.trackingUrl.trim())}" target="_blank" rel="noopener noreferrer" class="btn-track-courier">
                   <span>🌐 Track Live on Courier Website &rarr;</span>
                 </a>
               </div>
@@ -2138,16 +2157,16 @@ function renderCustomerTrackCard(order) {
       <!-- Order Details Summary -->
       <div class="track-items-summary">
         <div style="font-size:0.82rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:6px;">
-          Delivery to: ${cust.name || 'Customer'}, ${cust.city || ''} (${cust.pincode || ''})
+          Delivery to: ${escapeHtml(cust.name || 'Customer')}, ${escapeHtml(cust.city || '')} (${escapeHtml(cust.pincode || '')})
         </div>
         <div style="font-size:0.85rem; color:var(--text-main);">
-          <strong>Items:</strong> ${(order.items || []).map(i => `${i.name} [${i.weight || ''}] x${i.qty}`).join(', ')}
+          <strong>Items:</strong> ${(order.items || []).map(i => `${escapeHtml(i.name)} [${escapeHtml(i.weight || '')}] x${i.qty}`).join(', ')}
         </div>
       </div>
 
       <!-- Tax Invoice Action -->
       <div style="margin: 0.85rem 0; display:flex; justify-content:center;">
-        <button type="button" class="btn-primary" style="font-size:0.85rem; padding:8px 18px; background:linear-gradient(135deg, #15803D, #166534); border:none; border-radius:var(--radius-pill); cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; font-weight:700; box-shadow:0 3px 10px rgba(22, 101, 52, 0.2);" onclick="printCustomerInvoice('${order.id}')">
+        <button type="button" class="btn-primary" style="font-size:0.85rem; padding:8px 18px; background:linear-gradient(135deg, #15803D, #166534); border:none; border-radius:var(--radius-pill); cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; font-weight:700; box-shadow:0 3px 10px rgba(22, 101, 52, 0.2);" onclick="printCustomerInvoice('${escapeHtml(order.id)}')">
           <span>🧾 Print / Download Tax Invoice (PDF)</span>
         </button>
       </div>
@@ -2262,7 +2281,7 @@ async function printCustomerInvoice(orderId) {
           <div style="font-size: 20px; font-weight: 900; color: #4A0B18; text-transform: uppercase; letter-spacing: 1px;">TAX INVOICE</div>
           <div style="font-size: 12px; font-weight: 700; color: #333; margin-top: 4px;">Invoice No: <strong>${invoiceNo}</strong></div>
           <div style="font-size: 12px; color: #555;">Date: <strong>${orderDate}</strong></div>
-          <div style="font-size: 12px; color: #555;">Order ID: <strong>#${order.id}</strong></div>
+          <div style="font-size: 12px; color: #555;">Order ID: <strong>#${escapeHtml(order.id)}</strong></div>
         </div>
       </div>
 
@@ -2272,10 +2291,10 @@ async function printCustomerInvoice(orderId) {
           <div style="font-weight: 800; color: #4A0B18; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #E5D5C5; padding-bottom: 3px;">
             Billed &amp; Shipped To:
           </div>
-          <div style="font-size: 14px; font-weight: 800; color: #000;">${cust.name || 'Valued Customer'}</div>
-          <div>Phone: <strong>${cust.phone || 'N/A'}</strong></div>
-          <div style="margin-top: 4px;">${cust.address || ''}</div>
-          <div>${cust.city || ''}, ${cust.state || ''} - <strong>PIN: ${cust.pincode || ''}</strong></div>
+          <div style="font-size: 14px; font-weight: 800; color: #000;">${escapeHtml(cust.name || 'Valued Customer')}</div>
+          <div>Phone: <strong>${escapeHtml(cust.phone || 'N/A')}</strong></div>
+          <div style="margin-top: 4px;">${escapeHtml(cust.address || '')}</div>
+          <div>${escapeHtml(cust.city || '')}, ${escapeHtml(cust.state || '')} - <strong>PIN: ${escapeHtml(cust.pincode || '')}</strong></div>
         </div>
 
         <div style="background: #FDFBF9; border: 1px solid #E5D5C5; padding: 12px; border-radius: 6px;">
@@ -2284,9 +2303,9 @@ async function printCustomerInvoice(orderId) {
           </div>
           <div>Payment Method: <strong>Prepaid UPI (Online)</strong></div>
           <div>Payment State: <strong style="color:#059669;">PAID IN FULL</strong></div>
-          <div>UPI Reference / UTR: <strong style="font-family:monospace; color:#1E40AF;">${order.paymentReference || 'VERIFIED'}</strong></div>
-          <div style="margin-top: 4px;">Courier Partner: <strong>${tracking.courier || 'Express Courier'}</strong></div>
-          <div>Tracking ID: <strong>${tracking.trackingId || 'Generated upon dispatch'}</strong></div>
+          <div>UPI Reference / UTR: <strong style="font-family:monospace; color:#1E40AF;">${escapeHtml(order.paymentReference || 'VERIFIED')}</strong></div>
+          <div style="margin-top: 4px;">Courier Partner: <strong>${escapeHtml(tracking.courier || 'Express Courier')}</strong></div>
+          <div>Tracking ID: <strong>${escapeHtml(tracking.trackingId || 'Generated upon dispatch')}</strong></div>
         </div>
       </div>
 
@@ -2307,10 +2326,10 @@ async function printCustomerInvoice(orderId) {
             <tr style="border-bottom: 1px solid #E5D5C5; ${idx % 2 === 1 ? 'background: #FAF7F2;' : ''}">
               <td style="padding: 8px 10px; text-align: center;">${idx + 1}</td>
               <td style="padding: 8px 10px;">
-                <strong>${item.name}</strong>
-                ${item.teluguName ? `<span style="color:#777; font-size:11px;"> (${item.teluguName})</span>` : ''}
+                <strong>${escapeHtml(item.name)}</strong>
+                ${item.teluguName ? `<span style="color:#777; font-size:11px;"> (${escapeHtml(item.teluguName)})</span>` : ''}
               </td>
-              <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${item.weight || 'Standard'}</td>
+              <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${escapeHtml(item.weight || 'Standard')}</td>
               <td style="padding: 8px 10px; text-align: center; font-weight: 700;">${item.qty}</td>
               <td style="padding: 8px 10px; text-align: right;">₹${item.unitPrice || 0}</td>
               <td style="padding: 8px 10px; text-align: right; font-weight: 700;">₹${(item.unitPrice || 0) * (item.qty || 1)}</td>
